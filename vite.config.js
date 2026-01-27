@@ -1,0 +1,20 @@
+import { defineConfig } from 'vite'
+import uni from '@dcloudio/vite-plugin-uni'
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [
+    uni(),
+  ],
+  server: {
+    port: 3000,
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  },
+  optimizeDeps: {
+    force: true, // 强制重新分析依赖
+  },
+})
