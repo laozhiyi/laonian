@@ -56,6 +56,20 @@
 			"style": {
 				"navigationBarTitleText": "确认订单"
 			}
+		},
+		{
+			"path": "pages/order/orders",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "我的订单"
+			}
+		},
+		{
+			"path": "pages/order/detail",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "订单详情"
+			}
 		}
 	],
 	"globalStyle": {

@@ -4,15 +4,14 @@
  * 对接后端 API：
  * - GET /addresses - 获取地址列表
  * - POST /addresses - 创建地址
- * - GET /addresses/:id - 获取单个地址
  * - PUT /addresses/:id - 更新地址
  * - DELETE /addresses/:id - 删除地址
- * - PUT /addresses/:id/default - 设为默认地址
+ * - PUT /addresses/:id/default - 设为默认
  */
 
 import { get, post, put, del } from './request.js'
 
-// 本地存储 Key
+// 本地存储 Key（用于离线存储）
 const ADDRESSES_KEY = 'user_addresses'
 
 /**
@@ -21,13 +20,17 @@ const ADDRESSES_KEY = 'user_addresses'
 export async function getAddresses() {
   try {
     const res = await get('/addresses')
-    if (res.code === 200) {
-      return { ok: true, list: res.data || [] }
+    if (res.code === 200 && res.data) {
+      // 将 _id 映射为 id
+      const list = res.data.map(addr => ({
+        ...addr,
+        id: addr._id || addr.id
+      }))
+      return { ok: true, list }
     }
-    // 失败时从本地存储获取
-    return { ok: true, list: getLocalAddresses() }
+    return { ok: false, message: res.message || '获取地址列表失败' }
   } catch {
-    return { ok: true, list: getLocalAddresses() }
+    return { ok: false, message: '网络错误，获取地址失败' }
   }
 }
 
@@ -37,16 +40,11 @@ export async function getAddresses() {
 export async function getAddress(id) {
   try {
     const res = await get(`/addresses/${id}`)
-    if (res.code === 200) {
-      return { ok: true, data: res.data }
+    if (res.code === 200 && res.data) {
+      return { ok: true, data: { ...res.data, id: res.data._id || res.data.id } }
     }
-    // 从本地查找
-    const local = getLocalAddresses().find(a => a.id === id)
-    if (local) return { ok: true, data: local }
     return { ok: false, message: '地址不存在' }
   } catch {
-    const local = getLocalAddresses().find(a => a.id === id)
-    if (local) return { ok: true, data: local }
     return { ok: false, message: '获取地址失败' }
   }
 }
@@ -66,19 +64,21 @@ export async function getDefaultAddress() {
 
 /**
  * 创建地址
+ * @param {Object} data - 地址数据
+ * @param {string} data.name - 收货人姓名
+ * @param {string} data.phone - 手机号码
+ * @param {string} data.detail - 详细地址
+ * @param {boolean} data.isDefault - 是否默认
  */
 export async function createAddress(data) {
   try {
     const res = await post('/addresses', data)
     if (res.code === 200) {
-      return { ok: true, id: res.data.id, data: res.data }
+      return { ok: true, id: res.data.id || res.data._id }
     }
-    // 本地创建
-    const newAddr = saveLocalAddress(data)
-    return { ok: true, id: newAddr.id, data: newAddr }
+    return { ok: false, message: res.message || '创建地址失败' }
   } catch {
-    const newAddr = saveLocalAddress(data)
-    return { ok: true, id: newAddr.id, data: newAddr }
+    return { ok: false, message: '网络错误，创建地址失败' }
   }
 }
 
@@ -89,14 +89,11 @@ export async function updateAddress(id, data) {
   try {
     const res = await put(`/addresses/${id}`, data)
     if (res.code === 200) {
-      return { ok: true, data: res.data }
+      return { ok: true }
     }
-    // 本地更新
-    const updated = updateLocalAddress(id, data)
-    return { ok: true, data: updated }
+    return { ok: false, message: res.message || '更新地址失败' }
   } catch {
-    const updated = updateLocalAddress(id, data)
-    return { ok: true, data: updated }
+    return { ok: false, message: '网络错误，更新地址失败' }
   }
 }
 
@@ -109,12 +106,9 @@ export async function deleteAddress(id) {
     if (res.code === 200) {
       return { ok: true }
     }
-    // 本地删除
-    deleteLocalAddress(id)
-    return { ok: true }
+    return { ok: false, message: res.message || '删除地址失败' }
   } catch {
-    deleteLocalAddress(id)
-    return { ok: true }
+    return { ok: false, message: '网络错误，删除地址失败' }
   }
 }
 
@@ -127,16 +121,13 @@ export async function setDefaultAddress(id) {
     if (res.code === 200) {
       return { ok: true }
     }
-    // 本地设置
-    setLocalDefaultAddress(id)
-    return { ok: true }
+    return { ok: false, message: res.message || '设置默认地址失败' }
   } catch {
-    setLocalDefaultAddress(id)
-    return { ok: true }
+    return { ok: false, message: '网络错误，设置默认地址失败' }
   }
 }
 
-// ========== 本地存储操作 ==========
+// ========== 本地存储操作（保留供 checkout 等页面使用） ==========
 
 export function getLocalAddresses() {
   try {
@@ -152,7 +143,7 @@ export function saveLocalAddress(data) {
   const newAddr = {
     id: 'addr_' + Date.now(),
     ...data,
-    isDefault: addresses.length === 0, // 第一个地址默认为默认地址
+    isDefault: addresses.length === 0,
     createdAt: new Date().toISOString()
   }
   addresses.unshift(newAddr)
@@ -192,7 +183,7 @@ export const ADDRESS_TYPES = [
   { value: 'other', label: '其他', icon: '📍' },
 ]
 
-// 省份数据（简化版）
+// 省份数据
 export const PROVINCES = [
   '北京', '天津', '河北', '山西', '内蒙古', '辽宁', '吉林', '黑龙江',
   '上海', '江苏', '浙江', '安徽', '福建', '江西', '山东', '河南',

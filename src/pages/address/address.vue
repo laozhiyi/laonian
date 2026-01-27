@@ -18,12 +18,12 @@
           <view class="address-card__info" @tap="onAddressTap(addr)">
             <view class="address-card__top">
               <view class="address-card__name">{{ addr.name }}</view>
-              <view class="address-card__phone">{{ addr.phone }}</view>
-              <view class="address-card__tag" v-if="addr.isDefault">默认</view>
-              <view class="address-card__tag address-card__tag--type" v-else-if="addr.type">{{ addr.typeLabel }}</view>
+              <view class="address-card__phone">{{ formatPhone(addr.phone) }}</view>
+              <view class="address-card__tag address-card__tag--default" v-if="addr.isDefault">默认</view>
+              <view class="address-card__tag address-card__tag--type" v-if="addr.type && !addr.isDefault">{{ addr.typeLabel }}</view>
             </view>
             <view class="address-card__detail">
-              {{ addr.province }}{{ addr.city }}{{ addr.district }}{{ addr.detail }}
+              {{ addr.detail }}
             </view>
           </view>
           <view class="address-card__actions">
@@ -54,12 +54,17 @@
       <!-- 底部安全区 -->
       <view class="bottom-safe" />
     </scroll-view>
+
+    <!-- 底部悬浮添加按钮 -->
+    <view class="float-btn" @tap="goAdd" v-if="addressList.length > 0">
+      <text>添加地址</text>
+    </view>
   </view>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { getAddresses, deleteAddress, setDefaultAddress, getLocalAddresses } from '@/utils/address.js'
+import { getAddresses, deleteAddress, setDefaultAddress } from '@/utils/address.js'
 
 // ========== 状态栏高度 ==========
 const statusBarHeight = ref(0)
@@ -68,10 +73,16 @@ const headerHeight = ref(88)
 // ========== 地址列表 ==========
 const addressList = ref([])
 
+// ========== 手机号脱敏 ==========
+const formatPhone = (phone) => {
+  if (!phone || phone.length < 11) return phone
+  return phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2')
+}
+
 // ========== 滚动区域样式 ==========
 const scrollStyle = computed(() => ({
-  paddingTop: headerHeight.value + 'px',
-  height: 'calc(100vh - ' + (headerHeight.value + uni.getSystemInfoSync().safeAreaInsets?.bottom || 0) + 'px)',
+  paddingTop: (statusBarHeight.value + headerHeight.value) + 'px',
+  height: 'calc(100vh - ' + (statusBarHeight.value + headerHeight.value + uni.getSystemInfoSync().safeAreaInsets?.bottom || 0) + 'px)',
 }))
 
 // ========== 加载地址列表 ==========
@@ -84,6 +95,8 @@ const loadAddresses = async () => {
       if (b.isDefault) return 1
       return 0
     })
+  } else {
+    addressList.value = []
   }
 }
 
@@ -117,6 +130,11 @@ const onAddressTap = (addr) => {
 
 const setDefault = async (addr) => {
   if (addr.isDefault) return
+  // 如果只有一个地址，不能取消当前默认
+  if (addressList.value.length === 1) {
+    uni.showToast({ title: '至少保留一个默认地址', icon: 'none' })
+    return
+  }
   await setDefaultAddress(addr.id)
   loadAddresses()
 }
@@ -196,7 +214,7 @@ $bg: #FFF9F3;
 
 /* 地址列表 */
 .address-list {
-  padding: 24rpx;
+  padding: 0rpx 24rpx;
 }
 
 .address-card {
@@ -209,18 +227,18 @@ $bg: #FFF9F3;
 }
 
 .address-card__info {
-  padding: 28rpx 24rpx 20rpx;
+  padding: 28rpx 24rpx 24rpx;
   border-bottom: 1rpx solid #f5f5f5;
 }
 
 .address-card__top {
   display: flex;
   align-items: center;
-  margin-bottom: 12rpx;
+  margin-bottom: 16rpx;
 }
 
 .address-card__name {
-  font-size: 30rpx;
+  font-size: 32rpx;
   font-weight: 600;
   color: $text;
   margin-right: 16rpx;
@@ -233,22 +251,27 @@ $bg: #FFF9F3;
 }
 
 .address-card__tag {
-  font-size: 20rpx;
+  font-size: 22rpx;
   color: #fff;
   background: $primary;
-  padding: 4rpx 12rpx;
-  border-radius: 6rpx;
+  padding: 6rpx 16rpx;
+  border-radius: 8rpx;
+}
+
+.address-card__tag--default {
+  background: $primary;
 }
 
 .address-card__tag--type {
-  background: #e8f5e9;
+  background: #FFF9F3;
   color: $primary;
+  font-weight: 500;
 }
 
 .address-card__detail {
   font-size: 26rpx;
   color: $sub;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 .address-card__actions {
@@ -325,5 +348,20 @@ $bg: #FFF9F3;
 /* 底部安全区 */
 .bottom-safe {
   height: 40rpx;
+}
+
+/* 悬浮添加按钮 */
+.float-btn {
+  position: fixed;
+  left: 50%;
+  bottom: 40rpx;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, $primary, #FFB347);
+  padding: 24rpx 80rpx;
+  border-radius: 44rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #fff;
+  box-shadow: 0 8rpx 24rpx rgba(255, 144, 0, 0.3);
 }
 </style>

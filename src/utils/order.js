@@ -2,15 +2,13 @@
  * 订单模块 API
  *
  * 对接后端 API：
- * - POST /orders - 创建订单
+ * - POST /orders - 创建订单（直接返回已支付+已发货状态）
  * - GET /orders - 获取订单列表
  * - GET /orders/:id - 获取订单详情
- * - POST /orders/:id/pay - 订单支付
- * - POST /orders/:id/cancel - 取消订单
  * - POST /orders/:id/confirm - 确认收货
  */
 
-import { get, post } from './request.js'
+import { get, post, del } from './request.js'
 
 /**
  * 创建订单
@@ -75,31 +73,6 @@ export async function getOrderDetail(id) {
 }
 
 /**
- * 订单支付
- * @param {string} id - 订单ID
- * @param {string} paymentMethod - 支付方式：wechat/alipay/balance
- */
-export async function payOrder(id, paymentMethod = 'wechat') {
-  const res = await post(`/orders/${id}/pay`, { paymentMethod })
-  if (res.code === 200) {
-    return { ok: true, data: res.data }
-  }
-  return { ok: false, message: res.message }
-}
-
-/**
- * 取消订单
- * @param {string} id - 订单ID
- */
-export async function cancelOrder(id) {
-  const res = await post(`/orders/${id}/cancel`)
-  if (res.code === 200) {
-    return { ok: true, message: '取消成功' }
-  }
-  return { ok: false, message: res.message }
-}
-
-/**
  * 确认收货
  * @param {string} id - 订单ID
  */
@@ -111,20 +84,40 @@ export async function confirmOrder(id) {
   return { ok: false, message: res.message }
 }
 
+/**
+ * 退货/取消订单
+ * @param {string} id - 订单ID
+ */
+export async function refundOrder(id) {
+  const res = await post(`/orders/${id}/refund`)
+  if (res.code === 200) {
+    return { ok: true, message: '退货成功' }
+  }
+  return { ok: false, message: res.message }
+}
+
+/**
+ * 删除订单
+ * @param {string} id - 订单ID
+ */
+export async function deleteOrder(id) {
+  const res = await del(`/orders/${id}`)
+  if (res.code === 200) {
+    return { ok: true, message: '删除成功' }
+  }
+  return { ok: false, message: res.message }
+}
+
 // 订单状态常量
 export const ORDER_STATUS = {
-  PENDING: 'pending',     // 待支付
-  PAID: 'paid',           // 已支付
-  SHIPPED: 'shipped',     // 已发货
+  PAID: 'paid',          // 已支付（已发货）
+  SHIPPED: 'shipped',    // 已发货
   COMPLETED: 'completed', // 已完成
-  CANCELLED: 'cancelled', // 已取消
 }
 
 // 订单状态文本
 export const ORDER_STATUS_TEXT = {
-  pending: '待支付',
-  paid: '已支付',
+  paid: '已发货',
   shipped: '已发货',
   completed: '已完成',
-  cancelled: '已取消',
 }

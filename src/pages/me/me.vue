@@ -95,10 +95,12 @@ const onMenuTap = (menu) => {
     goLogin()
     return
   }
-  if (menu.key === 'address') {
+  if (menu.key === 'orders') {
+    uni.navigateTo({ url: '/pages/order/orders' })
+  } else if (menu.key === 'address') {
     uni.navigateTo({ url: '/pages/address/address' })
   } else {
-    toast('订单功能开发中')
+    toast('功能开发中')
   }
 }
 

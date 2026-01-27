@@ -53,8 +53,8 @@
     </scroll-view>
 
     <!-- 底部购物车栏 -->
-    <view class="cart-bar" v-if="cartCount > 0" :style="cartBarStyle">
-      <view class="cart-bar__left" @tap="toggleCart">
+    <view class="cart-bar" :style="cartBarStyle" :class="{ 'cart-bar--disabled': cartCount === 0 }">
+      <view class="cart-bar__left" :class="{ 'cart-bar__left--disabled': cartCount === 0 }" @tap="toggleCart">
         <view class="cart-bar__icon-wrap">
           <text class="cart-bar__icon">🛒</text>
           <view class="cart-bar__badge" v-if="cartCount > 0">{{ cartCount > 99 ? '99+' : cartCount }}</view>
@@ -63,7 +63,7 @@
           <text class="cart-bar__total-price">¥{{ totalPrice.toFixed(2) }}</text>
         </view>
       </view>
-      <view class="cart-bar__btn" @tap="goCheckout">
+      <view class="cart-bar__btn" :class="{ 'cart-bar__btn--disabled': cartCount === 0 }" @tap="goCheckout">
         <text>去结算</text>
       </view>
     </view>
@@ -279,6 +279,11 @@ const clearCart = async () => {
 }
 
 const goCheckout = () => {
+  // 检查购物车
+  if (cartCount.value === 0) {
+    uni.showToast({ title: '请先添加商品到购物车', icon: 'none' })
+    return
+  }
   // 检查登录
   const token = uni.getStorageSync('demo_token')
   if (!token) {
@@ -474,6 +479,15 @@ $bg: #FFF9F3;
   border-top: 1rpx solid #f0f0f0;
 }
 
+.cart-bar--disabled {
+  background: #f5f5f5;
+  border-top-color: #e5e5e5;
+}
+
+.cart-bar__left--disabled {
+  opacity: 0.5;
+}
+
 .cart-bar__left {
   display: flex;
   align-items: center;
@@ -535,6 +549,11 @@ $bg: #FFF9F3;
   font-weight: 600;
   color: #fff;
   box-shadow: 0 4rpx 16rpx rgba(255, 144, 0, 0.3);
+}
+
+.cart-bar__btn--disabled {
+  background: #ccc;
+  box-shadow: none;
 }
 
 /* 购物车面板 */

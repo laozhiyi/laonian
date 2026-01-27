@@ -24,7 +24,7 @@
               <view class="address-card__tag" v-if="selectedAddress.isDefault">默认</view>
             </view>
             <view class="address-card__detail">
-              {{ selectedAddress.province }}{{ selectedAddress.city }}{{ selectedAddress.district }}{{ selectedAddress.detail }}
+              {{ selectedAddress.detail }}
             </view>
             <text class="address-card__arrow">›</text>
           </template>
@@ -153,23 +153,28 @@ const loadData = async () => {
   loadAddress()
 }
 
-const loadAddress = () => {
+const loadAddress = async () => {
   // 先检查是否有选中的地址
   const selected = uni.getStorageSync('selected_address')
   if (selected) {
     try {
-      selectedAddress.value = JSON.parse(selected)
+      const addr = JSON.parse(selected)
+      // 确保使用的是后端返回的真实 MongoDB ObjectId
+      if (addr._id) {
+        addr.id = addr._id
+      }
+      selectedAddress.value = addr
       uni.removeStorageSync('selected_address')
       return
     } catch {}
   }
 
-  // 获取默认地址
-  const addrRes = getDefaultAddress()
+  // 从服务器获取默认地址
+  const addrRes = await getDefaultAddress()
   if (addrRes.ok && addrRes.data) {
     selectedAddress.value = addrRes.data
   } else {
-    // 从本地存储获取
+    // 从本地存储获取（兜底）
     const list = getLocalAddresses()
     if (list.length > 0) {
       selectedAddress.value = list.find(a => a.isDefault) || list[0]
@@ -200,12 +205,12 @@ const submitOrder = async () => {
   }
 
   uni.showModal({
-    title: '确认提交',
+    title: '确认支付',
     content: `共 ${cartList.value.length} 件商品，合计 ¥${totalPrice.value.toFixed(2)}`,
-    confirmText: '提交',
+    confirmText: '立即支付',
     success: async (res) => {
       if (res.confirm) {
-        uni.showLoading({ title: '提交中...' })
+        uni.showLoading({ title: '支付中...' })
 
         try {
           const orderRes = await createOrder({
@@ -214,27 +219,31 @@ const submitOrder = async () => {
             remark: remark.value.trim(),
           })
 
-          uni.hideLoading()
-
           if (orderRes.ok) {
-            // 清空购物车
-            const clearRes = await clearCart()
-            if (!clearRes.ok) {
-              clearLocalCart()
+            // 清空购物车（无论成功与否都清理本地）
+            try {
+              await clearCart()
+            } catch (e) {
+              console.log('服务器清空购物车失败，清理本地')
             }
-            uni.showToast({ title: '订单提交成功', icon: 'success' })
+            clearLocalCart()
+
+            uni.hideLoading()
+            uni.showToast({ title: '支付成功', icon: 'success' })
+
+            // 延迟跳转到订单列表
             setTimeout(() => {
-              uni.navigateBack()
+              uni.switchTab({ url: '/pages/order/orders' })
             }, 1500)
           }
         } catch (err) {
           uni.hideLoading()
-          let msg = '订单提交失败，请重试'
+          let msg = '支付失败，请重试'
           if (err && err.message) {
             msg = err.message
           }
           uni.showModal({
-            title: '提交失败',
+            title: '支付失败',
             content: msg,
             showCancel: false
           })
