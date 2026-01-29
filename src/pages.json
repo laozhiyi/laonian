@@ -17,7 +17,7 @@
 		{
 			"path": "pages/me/me",
 			"style": {
-				"navigationBarTitleText": "我的"
+				"navigationStyle": "custom"
 			}
 		},
 		{
@@ -36,13 +36,14 @@
 		{
 			"path": "pages/admin/admin",
 			"style": {
+				"navigationStyle": "custom",
 				"navigationBarTitleText": "商品管理"
 			}
 		},
 		{
 			"path": "pages/address/address",
 			"style": {
-				"navigationBarTitleText": "收货地址"
+				"navigationStyle": "custom"
 			}
 		},
 		{
@@ -67,8 +68,7 @@
 		{
 			"path": "pages/order/detail",
 			"style": {
-				"navigationStyle": "custom",
-				"navigationBarTitleText": "订单详情"
+				"navigationStyle": "custom"
 			}
 		}
 	],
@@ -87,20 +87,20 @@
 			{
 				"pagePath": "pages/index/index",
 				"text": "首页",
-				"iconPath": "static/tab-home.svg",
-				"selectedIconPath": "static/tab-home-active.svg"
+				"iconPath": "static/tab-home.png",
+				"selectedIconPath": "static/tab-home-active.png"
 			},
 			{
 				"pagePath": "pages/mall/mall",
 				"text": "商城",
-				"iconPath": "static/tab-mall.svg",
-				"selectedIconPath": "static/tab-mall-active.svg"
+				"iconPath": "static/tab-mall.png",
+				"selectedIconPath": "static/tab-mall-active.png"
 			},
 			{
 				"pagePath": "pages/me/me",
 				"text": "我的",
-				"iconPath": "static/tab-user.svg",
-				"selectedIconPath": "static/tab-user-active.svg"
+				"iconPath": "static/tab-user.png",
+				"selectedIconPath": "static/tab-user-active.png"
 			}
 		]
 	},

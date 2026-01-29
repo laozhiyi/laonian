@@ -46,3 +46,5 @@ uni_modules/.cache/
 # VS Code
 .vscode/
 !.vscode/extensions.json
+
+.claude

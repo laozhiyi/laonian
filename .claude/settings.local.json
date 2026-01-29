@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//d/Download/Desktop/uniapp/**)",
+      "Bash(cat:*)",
+      "Bash(python3 \"D:/Download/Desktop/uniapp/uni-preset-vue-vite/.claude/skills/ui-ux-pro-max/scripts/search.py\" \"ecommerce orange food fresh nature\" --design-system -p \"橘上生香\" -f markdown)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

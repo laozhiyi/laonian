@@ -2,7 +2,11 @@
   <view class="page">
     <!-- 顶部导航 -->
     <view class="header" :style="{ paddingTop: statusBarHeight + 'px' }">
-      <view class="header__back" @tap="goBack">‹</view>
+      <view class="header__back" @tap="goBack">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </view>
       <text class="header__title">确认订单</text>
       <view class="header__placeholder" />
     </view>
@@ -26,13 +30,26 @@
             <view class="address-card__detail">
               {{ selectedAddress.detail }}
             </view>
-            <text class="address-card__arrow">›</text>
+            <view class="address-card__arrow">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </view>
           </template>
           <template v-else>
             <view class="address-card__empty">
-              <text class="address-card__empty-icon">📍</text>
+              <view class="address-card__empty-icon">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" stroke-width="2"/>
+                  <path d="M12 8C14.2091 8 16 9.79086 16 12C16 14.2091 14.2091 16 12 16C9.79086 16 8 14.2091 8 12C8 9.79086 9.79086 8 12 8Z" stroke="currentColor" stroke-width="2"/>
+                </svg>
+              </view>
               <text class="address-card__empty-text">请添加收货地址</text>
-              <text class="address-card__empty-arrow">›</text>
+              <view class="address-card__empty-arrow">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </view>
             </view>
           </template>
         </view>
@@ -233,7 +250,7 @@ const submitOrder = async () => {
 
             // 延迟跳转到订单列表
             setTimeout(() => {
-              uni.switchTab({ url: '/pages/order/orders' })
+              uni.navigateTo({ url: '/pages/order/orders' })
             }, 1500)
           }
         } catch (err) {
@@ -263,9 +280,34 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 $primary: #FF9000;
+$primary-light: #FFB347;
 $text: #2B2B2B;
-$sub: #7A7A7A;
-$bg: #FFF9F3;
+$text-body: #5A5A5A;
+$sub: #999999;
+$bg: #FFFAF5;
+
+// 动画定义
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(30rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1.2);
+    opacity: 0;
+  }
+}
 
 .page {
   min-height: 100vh;
@@ -279,30 +321,59 @@ $bg: #FFF9F3;
   left: 0;
   right: 0;
   height: 88rpx;
-  background: linear-gradient(135deg, $primary, #FFB347);
+  background: linear-gradient(135deg, $primary 0%, #FFB347 50%, #FFCC80 100%);
   display: flex;
   align-items: center;
   padding: 0 24rpx;
   z-index: 100;
+  box-shadow: 0 4rpx 24rpx rgba(255, 144, 0, 0.2);
+
+  &::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1rpx;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  }
 }
 
 .header__back {
-  font-size: 48rpx;
+  width: 60rpx;
+  height: 60rpx;
   color: #fff;
-  padding: 0 8rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  transition: all 0.2s ease;
+
+  &:active {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(0.9);
+  }
+
+  svg {
+    width: 32rpx;
+    height: 32rpx;
+  }
 }
 
 .header__title {
   flex: 1;
   text-align: center;
-  font-size: 32rpx;
+  font-size: 36rpx;
   font-weight: 600;
   color: #fff;
-  margin-right: 48rpx;
+  margin-right: 60rpx;
+  letter-spacing: 2rpx;
+  text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
 }
 
 .header__placeholder {
-  width: 48rpx;
+  width: 60rpx;
 }
 
 /* 滚动区域 */
@@ -313,57 +384,81 @@ $bg: #FFF9F3;
 /* 区块通用 */
 .section {
   background: #fff;
-  margin: 20rpx;
-  border-radius: 20rpx;
+  margin: 24rpx;
+  border-radius: 28rpx;
   overflow: hidden;
-  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.04);
+  box-shadow: 0 4rpx 28rpx rgba(0, 0, 0, 0.05),
+              0 2rpx 14rpx rgba(0, 0, 0, 0.02),
+              inset 0 1rpx 0 rgba(255, 255, 255, 1);
+  border: 1rpx solid rgba(0, 0, 0, 0.03);
+  animation: slideUpFade 0.5s ease-out;
 }
 
 .section-title {
-  font-size: 28rpx;
-  font-weight: 600;
+  font-size: 32rpx;
+  font-weight: 700;
   color: $text;
-  padding: 24rpx 24rpx 16rpx;
+  padding: 28rpx 28rpx 20rpx;
   border-bottom: 1rpx solid #f5f5f5;
+  letter-spacing: 1rpx;
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 18rpx;
+    left: 28rpx;
+    width: 48rpx;
+    height: 4rpx;
+    background: linear-gradient(90deg, $primary, $primary-light);
+    border-radius: 2rpx;
+  }
 }
 
 /* 收货地址 */
 .address-card {
-  padding: 24rpx;
+  padding: 28rpx;
   position: relative;
+  transition: all 0.2s ease;
+
+  &:active {
+    background: rgba(255, 144, 0, 0.02);
+  }
 }
 
 .address-card__top {
   display: flex;
   align-items: center;
-  margin-bottom: 12rpx;
+  margin-bottom: 14rpx;
 }
 
 .address-card__name {
-  font-size: 30rpx;
+  font-size: 32rpx;
   font-weight: 600;
   color: $text;
-  margin-right: 16rpx;
+  margin-right: 20rpx;
 }
 
 .address-card__phone {
-  font-size: 28rpx;
+  font-size: 30rpx;
   color: $sub;
 }
 
 .address-card__tag {
-  font-size: 20rpx;
+  font-size: 22rpx;
   color: #fff;
-  background: $primary;
-  padding: 4rpx 12rpx;
-  border-radius: 6rpx;
-  margin-left: 16rpx;
+  background: linear-gradient(135deg, $primary, $primary-light);
+  padding: 6rpx 16rpx;
+  border-radius: 8rpx;
+  margin-left: 20rpx;
+  font-weight: 500;
+  box-shadow: 0 2rpx 8rpx rgba(255, 144, 0, 0.3);
 }
 
 .address-card__detail {
-  font-size: 26rpx;
-  color: $sub;
-  line-height: 1.5;
+  font-size: 28rpx;
+  color: $text-body;
+  line-height: 1.6;
 }
 
 .address-card__arrow {
@@ -371,35 +466,58 @@ $bg: #FFF9F3;
   right: 24rpx;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 32rpx;
+  width: 36rpx;
+  height: 36rpx;
   color: $sub;
+  opacity: 0.6;
+  transition: all 0.2s;
+
+  svg {
+    width: 100%;
+    height: 100%;
+  }
 }
 
 .address-card--empty {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 48rpx 24rpx;
+  padding: 56rpx 24rpx;
 }
 
 .address-card__empty {
   display: flex;
   align-items: center;
   color: $sub;
-}
 
-.address-card__empty-icon {
-  font-size: 32rpx;
-  margin-right: 12rpx;
-}
+  &-icon {
+    width: 40rpx;
+    height: 40rpx;
+    margin-right: 16rpx;
+    opacity: 0.6;
 
-.address-card__empty-text {
-  font-size: 28rpx;
-}
+    svg {
+      width: 100%;
+      height: 100%;
+    }
+  }
 
-.address-card__empty-arrow {
-  font-size: 32rpx;
-  margin-left: 12rpx;
+  &-text {
+    font-size: 30rpx;
+    letter-spacing: 1rpx;
+  }
+
+  &-arrow {
+    width: 36rpx;
+    height: 36rpx;
+    margin-left: 16rpx;
+    opacity: 0.6;
+
+    svg {
+      width: 100%;
+      height: 100%;
+    }
+  }
 }
 
 /* 订单商品 */
@@ -410,31 +528,50 @@ $bg: #FFF9F3;
 .goods-item {
   display: flex;
   align-items: center;
-  padding: 16rpx 0;
+  padding: 20rpx 0;
   border-bottom: 1rpx solid #f8f8f8;
-}
+  transition: all 0.2s ease;
 
-.goods-item:last-child {
-  border-bottom: none;
+  &:active {
+    background: rgba(255, 144, 0, 0.02);
+    margin: 0 -24rpx;
+    padding-left: 24rpx;
+    padding-right: 24rpx;
+  }
+
+  &:last-child {
+    border-bottom: none;
+  }
 }
 
 .goods-item__cover {
-  width: 120rpx;
-  height: 120rpx;
-  border-radius: 12rpx;
+  width: 132rpx;
+  height: 132rpx;
+  border-radius: 16rpx;
   flex-shrink: 0;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s ease;
+
+  &:active {
+    transform: scale(0.95);
+  }
 }
 
 .goods-item__info {
   flex: 1;
-  margin-left: 20rpx;
+  margin-left: 24rpx;
 }
 
 .goods-item__title {
-  font-size: 26rpx;
+  font-size: 28rpx;
   color: $text;
-  line-height: 1.4;
-  margin-bottom: 12rpx;
+  line-height: 1.5;
+  margin-bottom: 14rpx;
+  font-weight: 500;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .goods-item__row {
@@ -444,13 +581,14 @@ $bg: #FFF9F3;
 }
 
 .goods-item__price {
-  font-size: 28rpx;
+  font-size: 32rpx;
   color: $primary;
   font-weight: 600;
+  text-shadow: 0 2rpx 6rpx rgba(255, 144, 0, 0.15);
 }
 
 .goods-item__quantity {
-  font-size: 24rpx;
+  font-size: 26rpx;
   color: $sub;
 }
 
@@ -461,15 +599,17 @@ $bg: #FFF9F3;
 
 .remark-input {
   width: 100%;
-  height: 120rpx;
+  height: 140rpx;
   padding: 0 24rpx;
-  font-size: 26rpx;
+  font-size: 28rpx;
   color: $text;
-  line-height: 1.5;
+  line-height: 1.6;
+  background: transparent;
 }
 
 .remark-placeholder {
   color: #bbb;
+  font-size: 26rpx;
 }
 
 /* 订单信息 */
@@ -477,37 +617,45 @@ $bg: #FFF9F3;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20rpx 24rpx;
+  padding: 24rpx 24rpx;
   border-bottom: 1rpx solid #f8f8f8;
-}
+  transition: all 0.2s ease;
 
-.info-row:last-child {
-  border-bottom: none;
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:active {
+    background: rgba(255, 144, 0, 0.02);
+  }
 }
 
 .info-row__label {
-  font-size: 26rpx;
+  font-size: 28rpx;
   color: $sub;
 }
 
 .info-row__value {
-  font-size: 26rpx;
+  font-size: 28rpx;
   color: $text;
+  font-weight: 500;
 }
 
 .info-row__value--free {
   color: $primary;
+  font-weight: 600;
 }
 
 .info-row__value--primary {
-  font-size: 32rpx;
+  font-size: 36rpx;
   font-weight: 700;
   color: $primary;
+  text-shadow: 0 2rpx 8rpx rgba(255, 144, 0, 0.2);
 }
 
 .info-row--total {
-  padding: 24rpx;
-  background: #fafafa;
+  padding: 28rpx;
+  background: linear-gradient(180deg, #fafafa, #f5f5f5);
 }
 
 /* 底部提交栏 */
@@ -516,14 +664,28 @@ $bg: #FFF9F3;
   left: 0;
   right: 0;
   bottom: 0;
-  height: 120rpx;
+  height: 140rpx;
   background: #fff;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 30rpx;
+  padding: 0 32rpx;
   padding-left: 40rpx;
-  box-shadow: 0 -4rpx 20rpx rgba(0, 0, 0, 0.08);
+  padding-bottom: calc(env(safe-area-inset-bottom) + 20rpx);
+  box-shadow: 0 -8rpx 40rpx rgba(0, 0, 0, 0.1),
+              0 -2rpx 16rpx rgba(0, 0, 0, 0.04);
+  border-top: 1rpx solid rgba(0, 0, 0, 0.05);
+  z-index: 100;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 32rpx;
+    right: 32rpx;
+    height: 1rpx;
+    background: linear-gradient(90deg, transparent, rgba(255, 144, 0, 0.2), transparent);
+  }
 }
 
 .submit-bar__total {
@@ -532,27 +694,39 @@ $bg: #FFF9F3;
 }
 
 .submit-bar__label {
-  font-size: 26rpx;
+  font-size: 30rpx;
   color: $sub;
+  margin-right: 8rpx;
 }
 
 .submit-bar__price {
-  font-size: 40rpx;
+  font-size: 48rpx;
   font-weight: 700;
   color: $primary;
+  text-shadow: 0 2rpx 10rpx rgba(255, 144, 0, 0.2);
+  font-family: 'DIN Alternate', 'Helvetica Neue', sans-serif;
 }
 
 .submit-bar__btn {
-  background: linear-gradient(135deg, $primary, #FFB347);
-  padding: 24rpx 60rpx;
-  border-radius: 40rpx;
-  font-size: 30rpx;
+  background: linear-gradient(135deg, $primary 0%, #FF6B35 100%);
+  padding: 30rpx 76rpx;
+  border-radius: 48rpx;
+  font-size: 34rpx;
   font-weight: 600;
   color: #fff;
+  letter-spacing: 3rpx;
+  box-shadow: 0 8rpx 32rpx rgba(255, 144, 0, 0.4),
+              0 4rpx 16rpx rgba(255, 107, 53, 0.25);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:active {
+    transform: scale(0.96);
+    box-shadow: 0 4rpx 20rpx rgba(255, 144, 0, 0.3);
+  }
 }
 
 /* 底部安全区 */
 .bottom-safe {
-  height: 140rpx;
+  height: 160rpx;
 }
 </style>
