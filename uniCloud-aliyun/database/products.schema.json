@@ -1,0 +1,24 @@
+{
+	"bsonType": "object",
+	"required": ["title", "priceNow"],
+	"permission": {
+		"read": true,
+		"create": true,
+		"update": true,
+		"delete": true
+	},
+	"properties": {
+		"_id": { "description": "ID" },
+		"title": { "bsonType": "string" },
+		"description": { "bsonType": "string" },
+		"price": { "bsonType": "number" },
+		"priceNow": { "bsonType": "number" },
+		"priceOrigin": { "bsonType": "number" },
+		"cover": { "bsonType": "string" },
+		"stock": { "bsonType": "int" },
+		"tags": { "bsonType": "array" },
+		"status": { "bsonType": "string" },
+		"createdAt": { "bsonType": "timestamp" },
+		"updatedAt": { "bsonType": "timestamp" }
+	}
+}

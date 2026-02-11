@@ -37,8 +37,26 @@
         </view>
       </view>
 
+      <!-- 骨架屏加载状态 -->
+      <view class="skeleton-waterfall" v-if="productsLoading && productList.length === 0">
+        <view class="skeleton-column">
+          <view class="skeleton-card" v-for="n in 4" :key="'left-' + n">
+            <view class="skeleton-image"></view>
+            <view class="skeleton-text"></view>
+            <view class="skeleton-text short"></view>
+          </view>
+        </view>
+        <view class="skeleton-column">
+          <view class="skeleton-card" v-for="n in 4" :key="'right-' + n">
+            <view class="skeleton-image"></view>
+            <view class="skeleton-text"></view>
+            <view class="skeleton-text short"></view>
+          </view>
+        </view>
+      </view>
+
       <!-- 商品瀑布流 -->
-      <view class="product-waterfall">
+      <view class="product-waterfall" v-else>
         <view class="waterfall-column waterfall-column--left">
           <view
             class="product-mega-card"
@@ -49,24 +67,13 @@
           >
             <view class="mega-card__image-wrap">
               <image class="mega-card__image" :src="product.cover" mode="aspectFill" />
-              <view class="mega-card__tag" v-if="product.tags && product.tags[0]">
-                {{ product.tags[0] }}
-              </view>
-              <view class="mega-card__overlay">
-                <view class="quick-add" @tap.stop="addToCart(product)">
-                  <text class="icon-text icon-text--add">+</text>
-                </view>
-              </view>
             </view>
             <view class="mega-card__body">
               <text class="mega-card__title">{{ product.title }}</text>
-              <view class="mega-card__tags" v-if="product.tags && product.tags.length > 1">
-                <text class="mini-tag" v-for="tag in product.tags.slice(1, 3)" :key="tag">{{ tag }}</text>
-              </view>
               <view class="mega-card__footer">
                 <view class="price-group">
                   <text class="price-symbol">¥</text>
-                  <text class="price-value">{{ product.priceNow.toFixed(2) }}</text>
+                  <text class="price-value">{{ (product.priceNow || 0).toFixed(2) }}</text>
                 </view>
                 <view class="add-circle" @tap.stop="addToCart(product)">
                   <text class="icon-text icon-text--add">+</text>
@@ -86,24 +93,13 @@
           >
             <view class="mega-card__image-wrap">
               <image class="mega-card__image" :src="product.cover" mode="aspectFill" />
-              <view class="mega-card__tag" v-if="product.tags && product.tags[0]">
-                {{ product.tags[0] }}
-              </view>
-              <view class="mega-card__overlay">
-                <view class="quick-add" @tap.stop="addToCart(product)">
-                  <text class="icon-text icon-text--add">+</text>
-                </view>
-              </view>
             </view>
             <view class="mega-card__body">
               <text class="mega-card__title">{{ product.title }}</text>
-              <view class="mega-card__tags" v-if="product.tags && product.tags.length > 1">
-                <text class="mini-tag" v-for="tag in product.tags.slice(1, 3)" :key="tag">{{ tag }}</text>
-              </view>
               <view class="mega-card__footer">
                 <view class="price-group">
                   <text class="price-symbol">¥</text>
-                  <text class="price-value">{{ product.priceNow.toFixed(2) }}</text>
+                  <text class="price-value">{{ (product.priceNow || 0).toFixed(2) }}</text>
                 </view>
                 <view class="add-circle" @tap.stop="addToCart(product)">
                   <text class="icon-text icon-text--add">+</text>
@@ -115,7 +111,7 @@
       </view>
 
       <!-- 底部加载提示 -->
-      <view class="load-more" v-if="filteredProducts.length > 0">
+      <view class="load-more" v-if="(filteredProducts || []).length > 0">
         <text class="load-more__text">— 已经到底啦 —</text>
       </view>
 
@@ -149,7 +145,7 @@
 
         <scroll-view class="search-popup__body" scroll-y>
           <!-- 搜索历史 -->
-          <view class="search-section" v-if="searchHistory.length > 0">
+          <view class="search-section" v-if="(searchHistory || []).length > 0">
             <view class="search-section__header">
               <text class="search-section__title">搜索历史</text>
               <view class="search-section__clear" @tap="clearHistory">
@@ -167,7 +163,7 @@
           </view>
 
           <!-- 无搜索历史提示 -->
-          <view class="search-empty" v-if="searchHistory.length === 0">
+          <view class="search-empty" v-if="(searchHistory || []).length === 0">
             <text class="search-empty__text">暂无搜索记录</text>
           </view>
         </scroll-view>
@@ -181,7 +177,7 @@
       </view>
       <view class="cart-float__badge" v-if="cartCount > 0">{{ cartCount > 99 ? '99+' : cartCount }}</view>
       <view class="cart-float__total" v-if="cartCount > 0">
-        <text>¥{{ totalPrice.toFixed(2) }}</text>
+        <text>¥{{ (totalPrice || 0).toFixed(2) }}</text>
       </view>
     </view>
 
@@ -191,7 +187,7 @@
       <view class="cart-panel__sheet">
         <view class="cart-panel__handle"></view>
         <view class="cart-panel__header">
-          <view class="cart-panel__scroll-btns" v-if="cartList.length > 3">
+          <view class="cart-panel__scroll-btns" v-if="cartListLength > 3">
             <view class="scroll-btn" @tap="scrollToTop">
               <text class="icon-text icon-text--arrow-up">▲</text>
             </view>
@@ -206,13 +202,13 @@
         </view>
 
         <view class="cart-panel__scroll">
-          <view class="cart-items" v-if="cartList.length > 0">
+          <view class="cart-items" v-if="cartListLength > 0">
             <view class="cart-item" v-for="(item, index) in cartList" :key="item.id">
               <image class="cart-item__cover" :src="item.cover" mode="aspectFill" />
               <view class="cart-item__info">
                 <text class="cart-item__title">{{ item.title }}</text>
                 <view class="cart-item__bottom">
-                  <text class="cart-item__price">¥{{ item.price.toFixed(2) }}</text>
+                  <text class="cart-item__price">¥{{ (item.price || 0).toFixed(2) }}</text>
                   <view class="cart-item__controls">
                     <view class="qty-btn qty-btn--minus" @tap="changeQuantity(index, -1)">
                       <text class="icon-text icon-text--minus">−</text>
@@ -234,10 +230,10 @@
           </view>
         </view>
 
-        <view class="cart-panel__footer" v-if="cartList.length > 0">
+        <view class="cart-panel__footer" v-if="cartListLength > 0">
           <view class="cart-total">
             <text class="cart-total__label">合计</text>
-            <text class="cart-total__value">¥{{ totalPrice.toFixed(2) }}</text>
+            <text class="cart-total__value">¥{{ (totalPrice || 0).toFixed(2) }}</text>
           </view>
           <view class="checkout-btn" @tap="goCheckout">
             <text>去结算</text>
@@ -251,25 +247,33 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { getProducts, getAdminProducts } from '@/utils/product.js'
-import {
-  getCart,
-  addToCart as apiAddToCart,
-  updateCartItem as apiUpdateCartItem,
-  deleteCartItem as apiDeleteCartItem,
-  clearCart as apiClearCart,
-  saveToLocalCart,
-  updateLocalCartItem,
-  deleteLocalCartItem,
-  clearLocalCart,
-  getLocalCart
-} from '@/utils/cart.js'
+import { getProducts } from '@/utils/product.js'
+import { getCart, addToCart as apiAddToCart, saveToLocalCart, getLocalCart, updateCartItem, deleteCartItem, clearCart as clearCartApi } from '@/utils/cart.js'
+import { getWithCache } from '@/utils/cache.js'
 
 // ========== 状态栏高度 ==========
 const statusBarHeight = ref(0)
 const navHeight = ref(88)
 const capsuleInfo = ref({ width: 0, height: 0, left: 0, right: 0, bottom: 0 })
 const searchBarHeight = 100 // 搜索栏固定高度
+
+// ========== 图片URL转换函数 ==========
+const getImageUrl = (cover) => {
+  if (!cover) return ''
+
+  // 如果是云存储URL (cloud://开头)
+  if (cover.startsWith('cloud://')) {
+    return cover
+  }
+
+  // 如果是HTTP URL，直接返回
+  if (cover.startsWith('http://') || cover.startsWith('https://')) {
+    return cover
+  }
+
+  // 其他情况返回空字符串
+  return ''
+}
 
 // ========== 滚动区域样式 ==========
 const scrollStyle = computed(() => {
@@ -296,9 +300,23 @@ const totalPrice = ref(0)
 const showCart = ref(false)
 const cartBump = ref(false)
 
+// 安全的购物车列表访问器
+const safeCartList = computed(() => {
+  return cartList.value || []
+})
+
+// 安全获取购物车长度
+const cartListLength = computed(() => {
+  return (cartList.value || []).length
+})
+
 // ========== 商品列表数据 ==========
 const allProducts = ref([])
 const productList = ref([])
+const productsLoading = ref(false)
+
+// ========== 购物车加载状态 ==========
+const cartLoading = ref(false)
 
 // ========== 搜索功能 ==========
 const searchKeyword = ref('')
@@ -313,8 +331,8 @@ const filteredProducts = computed(() => {
     return productList.value
   }
   return productList.value.filter(item =>
-    item.title.toLowerCase().includes(keyword) ||
-    item.tags?.some(tag => tag.toLowerCase().includes(keyword))
+    (item.title && item.title.toLowerCase().includes(keyword)) ||
+    (item.tags && item.tags.some(tag => tag.toLowerCase().includes(keyword)))
   )
 })
 
@@ -371,19 +389,58 @@ const loadSearchHistory = () => {
 }
 
 // ========== 加载商品列表 ==========
-const loadProducts = async () => {
-  const res = await getProducts()
-  const adminProducts = getAdminProducts()
-  allProducts.value = [...adminProducts, ...(res.list || [])]
-  productList.value = [...allProducts.value]
+const loadProducts = async (forceRefresh = false) => {
+  if (productsLoading.value) return
+  productsLoading.value = true
+
+  try {
+    let res
+    if (forceRefresh) {
+      // 强制刷新，不使用缓存
+      res = await getProducts()
+      res = res.list || []
+    } else {
+      // 使用缓存
+      res = await getWithCache(
+        'products_list',
+        async () => {
+          const result = await getProducts()
+          return result.list || []
+        },
+        2 * 60 * 1000 // 缓存2分钟
+      )
+    }
+
+    if (res) {
+      // 转换 _id 为 id
+      productList.value = res.map(item => ({
+        ...item,
+        id: item._id || item.id
+      }))
+      allProducts.value = productList.value
+    }
+  } catch (e) {
+    console.error('加载商品失败:', e)
+  } finally {
+    productsLoading.value = false
+  }
 }
 
 // ========== 加载购物车 ==========
-const loadCart = async () => {
-  const res = await getCart()
-  cartList.value = res.list || []
-  cartCount.value = res.totalCount || 0
-  totalPrice.value = res.totalPrice || 0
+const loadCart = async (forceRefresh = false) => {
+  if (cartLoading.value) return
+  cartLoading.value = true
+
+  try {
+    const res = await getCart()
+    cartList.value = res.list || []
+    cartCount.value = res.totalCount || 0
+    totalPrice.value = res.totalPrice || 0
+  } catch (e) {
+    console.error('加载购物车失败:', e)
+  } finally {
+    cartLoading.value = false
+  }
 }
 
 const onScroll = (e) => {
@@ -396,15 +453,15 @@ const goDetail = (product) => {
 }
 
 const addToCart = async (product) => {
-  const res = await apiAddToCart(product.id)
-  if (!res.ok) {
-    saveToLocalCart(product)
-    const localRes = getLocalCart()
-    cartList.value = localRes.list
-    cartCount.value = localRes.totalCount
-  } else {
-    await loadCart()
-  }
+  // 直接保存到本地购物车
+  await saveToLocalCart(product)
+  // 重新加载购物车数据
+  const localRes = await getLocalCart()
+  cartList.value = localRes.list || []
+  cartCount.value = localRes.totalCount || 0
+  totalPrice.value = localRes.totalPrice || 0
+
+  // 动画效果
   cartBump.value = true
   setTimeout(() => { cartBump.value = false }, 300)
   uni.showToast({ title: '已添加', icon: 'none' })
@@ -442,15 +499,15 @@ const changeQuantity = async (index, delta) => {
     return
   }
 
-  const res = await apiUpdateCartItem(item.id, newQuantity)
-  if (!res.ok) {
-    updateLocalCartItem(item.id, newQuantity)
-    const localRes = getLocalCart()
-    cartList.value = localRes.list
-    cartCount.value = localRes.totalCount
-    totalPrice.value = localRes.totalPrice
+  const res = await updateCartItem(item.id, newQuantity)
+  if (res.ok) {
+    loadCart()
   } else {
-    await loadCart()
+    await updateLocalCartItem(item.id, newQuantity)
+    const localRes = await getLocalCart()
+    cartList.value = localRes.list || []
+    cartCount.value = localRes.totalCount || 0
+    totalPrice.value = localRes.totalPrice || 0
   }
 }
 
@@ -461,28 +518,37 @@ const deleteItem = (index) => {
     content: '确定要删除该商品吗？',
     success: async (res) => {
       if (res.confirm) {
-        const apiRes = await apiDeleteCartItem(item.id)
-        if (!apiRes.ok) {
-          deleteLocalCartItem(item.id)
+        const apiRes = await deleteCartItem(item.id)
+        if (apiRes.ok) {
+          loadCart()
+        } else {
+          await deleteLocalCartItem(item.id)
+          const localRes = await getLocalCart()
+          cartList.value = localRes.list || []
+          cartCount.value = localRes.totalCount || 0
+          totalPrice.value = localRes.totalPrice || 0
         }
-        await loadCart()
       }
     }
   })
 }
 
-const clearCart = async () => {
+const clearCart = () => {
   if (cartList.value.length === 0) return
   uni.showModal({
     title: '确认清空',
     content: '确定要清空购物车吗？',
     success: async (res) => {
       if (res.confirm) {
-        const apiRes = await apiClearCart()
-        if (!apiRes.ok) {
+        const apiRes = await clearCartApi()
+        if (apiRes && apiRes.ok) {
+          loadCart()
+        } else {
           clearLocalCart()
+          cartList.value = []
+          cartCount.value = 0
+          totalPrice.value = 0
         }
-        await loadCart()
         showCart.value = false
       }
     }
@@ -506,7 +572,7 @@ const goCheckout = () => {
 }
 
 // ========== 生命周期 ==========
-onMounted(async () => {
+onMounted(() => {
   const sys = uni.getSystemInfoSync()
   statusBarHeight.value = sys.statusBarHeight || 0
   // 获取胶囊按钮信息
@@ -524,13 +590,15 @@ onMounted(async () => {
   } catch (e) {
     // 兼容旧版本
   }
-  await loadCart()
-  await loadProducts()
+  loadCart()
+  loadProducts()
   loadSearchHistory()
 })
 
-onShow(async () => {
-  await loadCart()
+onShow(() => {
+  // 每次显示时强制刷新商品列表和购物车数据
+  loadProducts(true)
+  loadCart()
 })
 </script>
 
@@ -779,6 +847,55 @@ $bg-light: #FFFAF7;
   bottom: 30rpx;
   right: 100rpx;
   animation-delay: 2s;
+}
+
+/* 骨架屏 */
+.skeleton-waterfall {
+  display: flex;
+  padding: 24rpx;
+  gap: 20rpx;
+}
+
+.skeleton-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.skeleton-card {
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 32rpx;
+  overflow: hidden;
+  padding: 0;
+}
+
+.skeleton-image {
+  width: 100%;
+  aspect-ratio: 1;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.skeleton-text {
+  height: 28rpx;
+  margin: 24rpx 24rpx 12rpx;
+  border-radius: 8rpx;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+
+  &.short {
+    width: 60%;
+    margin-top: 12rpx;
+    margin-bottom: 24rpx;
+  }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
 /* 瀑布流布局 */

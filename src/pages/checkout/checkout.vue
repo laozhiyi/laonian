@@ -1,14 +1,14 @@
 <template>
   <view class="page">
-    <!-- 顶部导航 -->
-    <view class="header" :style="{ paddingTop: statusBarHeight + 'px' }">
-      <view class="header__back" @tap="goBack">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+    <!-- 毛玻璃导航 -->
+    <view class="glass-nav" :style="{ paddingTop: statusBarHeight + 'px', height: (statusBarHeight + navHeight) + 'px' }">
+      <view class="glass-nav__back" @tap="goBack">
+        <text class="back-arrow">‹</text>
       </view>
-      <text class="header__title">确认订单</text>
-      <view class="header__placeholder" />
+      <view class="glass-nav__title">
+        <text class="title-text">确认订单</text>
+      </view>
+      <view class="glass-nav__placeholder" />
     </view>
 
     <!-- 滚动内容 -->
@@ -31,24 +31,39 @@
               {{ selectedAddress.detail }}
             </view>
             <view class="address-card__arrow">
+              <!-- #ifdef H5 -->
               <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
+              <!-- #endif -->
+              <!-- #ifdef MP-WEIXIN -->
+              <image src="/static/icons/right.png" mode="aspectFit" />
+              <!-- #endif -->
             </view>
           </template>
           <template v-else>
             <view class="address-card__empty">
               <view class="address-card__empty-icon">
+                <!-- #ifdef H5 -->
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" stroke-width="2"/>
                   <path d="M12 8C14.2091 8 16 9.79086 16 12C16 14.2091 14.2091 16 12 16C9.79086 16 8 14.2091 8 12C8 9.79086 9.79086 8 12 8Z" stroke="currentColor" stroke-width="2"/>
                 </svg>
+                <!-- #endif -->
+                <!-- #ifdef MP-WEIXIN -->
+                <image src="/static/icons/location.png" mode="aspectFit" />
+                <!-- #endif -->
               </view>
               <text class="address-card__empty-text">请添加收货地址</text>
               <view class="address-card__empty-arrow">
+                <!-- #ifdef H5 -->
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
+                <!-- #endif -->
+                <!-- #ifdef MP-WEIXIN -->
+                <image src="/static/icons/right.png" mode="aspectFit" />
+                <!-- #endif -->
               </view>
             </view>
           </template>
@@ -64,7 +79,7 @@
             <view class="goods-item__info">
               <view class="goods-item__title">{{ item.title }}</view>
               <view class="goods-item__row">
-                <view class="goods-item__price">¥{{ item.price.toFixed(2) }}</view>
+                <view class="goods-item__price">¥{{ (item.price || 0).toFixed(2) }}</view>
                 <view class="goods-item__quantity">x{{ item.quantity }}</view>
               </view>
             </view>
@@ -89,7 +104,7 @@
         <view class="section-title">订单信息</view>
         <view class="info-row">
           <text class="info-row__label">商品金额</text>
-          <text class="info-row__value">¥{{ totalPrice.toFixed(2) }}</text>
+          <text class="info-row__value">¥{{ (totalPrice || 0).toFixed(2) }}</text>
         </view>
         <view class="info-row">
           <text class="info-row__label">运费</text>
@@ -97,7 +112,7 @@
         </view>
         <view class="info-row info-row--total">
           <text class="info-row__label">合计</text>
-          <text class="info-row__value info-row__value--primary">¥{{ totalPrice.toFixed(2) }}</text>
+          <text class="info-row__value info-row__value--primary">¥{{ (totalPrice || 0).toFixed(2) }}</text>
         </view>
       </view>
 
@@ -109,7 +124,7 @@
     <view class="submit-bar" :style="submitBarStyle">
       <view class="submit-bar__total">
         <text class="submit-bar__label">合计：</text>
-        <text class="submit-bar__price">¥{{ totalPrice.toFixed(2) }}</text>
+        <text class="submit-bar__price">¥{{ (totalPrice || 0).toFixed(2) }}</text>
       </view>
       <view class="submit-bar__btn" @tap="submitOrder">
         <text>提交订单</text>
@@ -120,13 +135,13 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { getCart, clearCart, getLocalCart, clearLocalCart, getLocalCart as getLocalCartFunc } from '@/utils/cart.js'
+import { getCart, clearCart } from '@/utils/cart.js'
 import { createOrder } from '@/utils/order.js'
-import { getDefaultAddress, getLocalAddresses } from '@/utils/address.js'
+import { getDefaultAddress, getSelectedAddress } from '@/utils/address.js'
 
 // ========== 状态栏高度 ==========
 const statusBarHeight = ref(0)
-const headerHeight = ref(88)
+const navHeight = ref(88)
 
 // ========== 购物车数据 ==========
 const cartList = ref([])
@@ -140,8 +155,8 @@ const remark = ref('')
 
 // ========== 滚动区域样式 ==========
 const scrollStyle = computed(() => ({
-  paddingTop: headerHeight.value + 'px',
-  height: 'calc(100vh - ' + (headerHeight.value + uni.getSystemInfoSync().safeAreaInsets?.bottom || 0) + 'px)',
+  paddingTop: (statusBarHeight.value + navHeight.value) + 'px',
+  height: 'calc(100vh - ' + (statusBarHeight.value + navHeight.value + uni.getSystemInfoSync().safeAreaInsets?.bottom || 0) + 'px)',
 }))
 
 // ========== 提交栏样式 ==========
@@ -154,48 +169,26 @@ const submitBarStyle = computed(() => {
 
 // ========== 加载数据 ==========
 const loadData = async () => {
-  // 加载购物车
+  // 加载购物车（云端版）
   const cartRes = await getCart()
   cartList.value = cartRes.list || []
   totalPrice.value = cartRes.totalPrice || 0
 
-  // 如果本地购物车有数据，也加载
-  if (cartList.value.length === 0) {
-    const localCart = getLocalCartFunc()
-    cartList.value = localCart.list || []
-    totalPrice.value = localCart.totalPrice || 0
-  }
-
   // 加载默认地址
-  loadAddress()
+  await loadAddress()
 }
 
 const loadAddress = async () => {
-  // 先检查是否有选中的地址
-  const selected = uni.getStorageSync('selected_address')
+  // 使用新的 getSelectedAddress 和 getDefaultAddress
+  const selected = await getSelectedAddress()
   if (selected) {
-    try {
-      const addr = JSON.parse(selected)
-      // 确保使用的是后端返回的真实 MongoDB ObjectId
-      if (addr._id) {
-        addr.id = addr._id
-      }
-      selectedAddress.value = addr
-      uni.removeStorageSync('selected_address')
-      return
-    } catch {}
+    selectedAddress.value = selected
+    return
   }
 
-  // 从服务器获取默认地址
   const addrRes = await getDefaultAddress()
   if (addrRes.ok && addrRes.data) {
     selectedAddress.value = addrRes.data
-  } else {
-    // 从本地存储获取（兜底）
-    const list = getLocalAddresses()
-    if (list.length > 0) {
-      selectedAddress.value = list.find(a => a.isDefault) || list[0]
-    }
   }
 }
 
@@ -223,45 +216,35 @@ const submitOrder = async () => {
 
   uni.showModal({
     title: '确认支付',
-    content: `共 ${cartList.value.length} 件商品，合计 ¥${totalPrice.value.toFixed(2)}`,
+    content: `共 ${cartList.value.length} 件商品，合计 ¥${(totalPrice.value || 0).toFixed(2)}`,
     confirmText: '立即支付',
     success: async (res) => {
       if (res.confirm) {
         uni.showLoading({ title: '支付中...' })
 
-        try {
-          const orderRes = await createOrder({
-            cartItemIds: cartList.value.map(item => item.id),
-            addressId: selectedAddress.value.id,
-            remark: remark.value.trim(),
-          })
+        // 创建订单（云端版）
+        const orderRes = await createOrder({
+          cartItems: cartList.value,
+          address: selectedAddress.value,
+          remark: remark.value.trim(),
+        })
 
-          if (orderRes.ok) {
-            // 清空购物车（无论成功与否都清理本地）
-            try {
-              await clearCart()
-            } catch (e) {
-              console.log('服务器清空购物车失败，清理本地')
-            }
-            clearLocalCart()
+        if (orderRes.ok) {
+          // 清空购物车
+          await clearCart()
 
-            uni.hideLoading()
-            uni.showToast({ title: '支付成功', icon: 'success' })
-
-            // 延迟跳转到订单列表
-            setTimeout(() => {
-              uni.navigateTo({ url: '/pages/order/orders' })
-            }, 1500)
-          }
-        } catch (err) {
           uni.hideLoading()
-          let msg = '支付失败，请重试'
-          if (err && err.message) {
-            msg = err.message
-          }
+          uni.showToast({ title: '支付成功', icon: 'success' })
+
+          // 延迟跳转到订单列表
+          setTimeout(() => {
+            uni.navigateTo({ url: '/pages/order/orders' })
+          }, 1500)
+        } else {
+          uni.hideLoading()
           uni.showModal({
             title: '支付失败',
-            content: msg,
+            content: orderRes.message || '请重试',
             showCancel: false
           })
         }
@@ -314,66 +297,66 @@ $bg: #FFFAF5;
   background: $bg;
 }
 
-/* 顶部导航 */
-.header {
+/* 毛玻璃导航 */
+.glass-nav {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  height: 88rpx;
-  background: linear-gradient(135deg, $primary 0%, #FFB347 50%, #FFCC80 100%);
+  height: auto;
+  min-height: 88rpx;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(30rpx);
+  -webkit-backdrop-filter: blur(30rpx);
+  border-bottom: 1rpx solid rgba(255, 255, 255, 0.3);
+  z-index: 100;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: 0 24rpx;
-  z-index: 100;
-  box-shadow: 0 4rpx 24rpx rgba(255, 144, 0, 0.2);
-
-  &::before {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 1rpx;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-  }
+  box-sizing: border-box;
 }
 
-.header__back {
-  width: 60rpx;
-  height: 60rpx;
-  color: #fff;
+.glass-nav__back {
+  width: 64rpx;
+  height: 64rpx;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
+  border: 1rpx solid rgba(255, 255, 255, 0.5);
   transition: all 0.2s ease;
 
   &:active {
-    background: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 144, 0, 0.1);
     transform: scale(0.9);
   }
 
-  svg {
-    width: 32rpx;
-    height: 32rpx;
+  .back-arrow {
+    font-size: 48rpx;
+    font-weight: 300;
+    color: $text;
+    line-height: 1;
   }
 }
 
-.header__title {
-  flex: 1;
-  text-align: center;
-  font-size: 36rpx;
-  font-weight: 600;
-  color: #fff;
-  margin-right: 60rpx;
-  letter-spacing: 2rpx;
-  text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+.glass-nav__title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
-.header__placeholder {
-  width: 60rpx;
+.title-text {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: $text;
+  letter-spacing: 2rpx;
+}
+
+.glass-nav__placeholder {
+  width: 64rpx;
 }
 
 /* 滚动区域 */

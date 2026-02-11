@@ -17,9 +17,14 @@
       <view class="card">
         <view class="card__header">
           <view class="card__icon">
+            <!-- #ifdef H5 -->
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
             </svg>
+            <!-- #endif -->
+            <!-- #ifdef MP-WEIXIN -->
+            <image src="/static/icons/plus.png" mode="aspectFit" />
+            <!-- #endif -->
           </view>
           <text class="card__title">商品信息</text>
         </view>
@@ -37,13 +42,18 @@
 
           <view class="form__item">
             <text class="form__label">商品图片 *</text>
-            <view class="image-upload" @tap="chooseImage">
+            <view class="image-upload-btn" @tap="handleChooseImage">
               <image v-if="previewCover" class="image-preview" :src="previewCover" mode="aspectFill" />
               <view v-else class="image-placeholder">
                 <view class="image-placeholder__icon">
+                  <!-- #ifdef H5 -->
                   <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M23 19C23 19.5304 22.7893 20.0391 22.4142 20.4142C22.0391 20.7893 21.5304 21 21 21H3C2.46957 21 1.96086 20.7893 1.58579 20.4142C1.21071 20.0391 1 19.5304 1 19V8C1 7.73478 1.10536 7.48043 1.29289 7.29289C1.48043 7.10536 1.73478 7 2 7H9L11 4H19L21 7H22C22.2652 7 22.5196 7.10536 22.7071 7.29289C22.8946 7.48043 23 7.73478 23 8V19Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                   </svg>
+                  <!-- #endif -->
+                  <!-- #ifdef MP-WEIXIN -->
+                  <image src="/static/icons/upload.png" mode="aspectFit" />
+                  <!-- #endif -->
                 </view>
                 <text class="image-placeholder__text">点击上传图片</text>
               </view>
@@ -106,15 +116,29 @@
 
           <view class="form__actions">
             <view v-if="isEditing" class="btn btn--ghost" @tap="cancelEdit">
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-              </svg>
+              <view class="btn__icon">
+                <!-- #ifdef H5 -->
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <!-- #endif -->
+                <!-- #ifdef MP-WEIXIN -->
+                <image src="/static/icons/close.png" mode="aspectFit" />
+                <!-- #endif -->
+              </view>
               <text>取消</text>
             </view>
             <view class="btn btn--primary" @tap="handleSubmit">
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
+              <view class="btn__icon">
+                <!-- #ifdef H5 -->
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <!-- #endif -->
+                <!-- #ifdef MP-WEIXIN -->
+                <image src="/static/icons/check.png" mode="aspectFit" />
+                <!-- #endif -->
+              </view>
               <text>{{ isEditing ? '更新商品' : '添加商品' }}</text>
             </view>
           </view>
@@ -125,9 +149,17 @@
       <view class="card" v-if="productList.length > 0">
         <view class="card__header">
           <view class="card__icon card__icon--list">
+            <!-- #ifdef H5 -->
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M8 6H21M8 12H21M8 18H21M3 6H3.01M3 12H3.01M3 18H3.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
+            <!-- #endif -->
+            <!-- #ifdef MP-WEIXIN -->
+            <image src="/static/icons/list.png" mode="aspectFit" />
+            <!-- #endif -->
+            <!-- #ifdef APP-PLUS -->
+            <text class="btn-symbol">&#x2630;</text>
+            <!-- #endif -->
           </view>
           <text class="card__title">已添加商品 ({{ productList.length }})</text>
         </view>
@@ -143,15 +175,35 @@
             </view>
             <view class="product-item__actions">
               <view class="product-item__btn edit" @tap="handleEdit(index)">
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13M18.4142 5.41421L21 8L15.5858 13.4142L13 10.8284L18.4142 5.41421Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
+                <view class="product-item__btn-icon">
+                  <!-- #ifdef H5 -->
+                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13M18.4142 5.41421L21 8L15.5858 13.4142L13 10.8284L18.4142 5.41421Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                  <!-- #endif -->
+                  <!-- #ifdef MP-WEIXIN -->
+                  <text class="btn-symbol">&#x270F;</text>
+                  <!-- #endif -->
+                  <!-- #ifdef APP-PLUS -->
+                  <text class="btn-symbol">&#x270F;</text>
+                  <!-- #endif -->
+                </view>
                 <text>编辑</text>
               </view>
               <view class="product-item__btn delete" @tap="handleDelete(index)">
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M3 6H21M19 6V20C19 20.5523 18.5523 21 18 21H6C5.44772 21 5 20.5523 5 20V6M8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
+                <view class="product-item__btn-icon">
+                  <!-- #ifdef H5 -->
+                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3 6H21M19 6V20C19 20.5523 18.5523 21 18 21H6C5.44772 21 5 20.5523 5 20V6M8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                  <!-- #endif -->
+                  <!-- #ifdef MP-WEIXIN -->
+                  <text class="btn-symbol">&#x1F5D1;</text>
+                  <!-- #endif -->
+                  <!-- #ifdef APP-PLUS -->
+                  <text class="btn-symbol">&#x1F5D1;</text>
+                  <!-- #endif -->
+                </view>
                 <text>删除</text>
               </view>
             </view>
@@ -162,9 +214,17 @@
       <!-- 空状态 -->
       <view class="empty" v-else>
         <view class="empty__icon">
+          <!-- #ifdef H5 -->
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21M18 8C18 6.4087 17.3679 4.88258 16.2426 3.75736C15.1174 2.63214 13.5913 2 12 2C10.4087 2 8.88258 2.63214 7.75736 3.75736C6.63214 4.88258 6 6.4087 6 8M18 8V5M18 8H15M6 8V5M6 8H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
+          <!-- #endif -->
+          <!-- #ifdef MP-WEIXIN -->
+          <image src="/static/icons/cart.png" mode="aspectFit" />
+          <!-- #endif -->
+            <!-- #ifdef APP-PLUS -->
+          <text class="empty-symbol">&#x1F6D2;</text>
+          <!-- #endif -->
         </view>
         <text class="empty__text">暂无商品</text>
       </view>
@@ -173,9 +233,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { createProduct, updateProduct, deleteProduct, getProducts, getAdminProducts, deleteAdminProduct, saveAdminProduct } from '@/utils/product.js'
-import { uploadFile } from '@/utils/request.js'
+import { ref, onMounted } from 'vue'
+import { getAdminProducts, deleteProduct, createProduct, updateProduct } from '@/utils/product.js'
 
 // ========== 状态栏高度 ==========
 const statusBarHeight = ref(0)
@@ -203,52 +262,59 @@ const editingId = ref('')
 const previewCover = ref('')
 const uploading = ref(false)
 
-const chooseImage = () => {
+// 图片选择
+const handleChooseImage = () => {
   uni.chooseImage({
     count: 1,
-    sizeType: ['compressed'],
-    sourceType: ['album', 'camera'],
     success: async (res) => {
       const tempFilePath = res.tempFilePaths[0]
+
       // 先显示本地预览
       previewCover.value = tempFilePath
 
-      // 上传到服务器获取 URL
-      uploading.value = true
       try {
-        const uploadRes = await uploadFile('/upload', tempFilePath)
-        if (uploadRes.ok) {
-          form.value.cover = uploadRes.url
-          uni.showToast({ title: '图片上传成功', icon: 'success' })
-        } else {
-          uni.showToast({ title: uploadRes.message || '图片上传失败', icon: 'none' })
+        // 上传到云端存储
+        uni.showLoading({ title: '上传中...' })
+        const uploadRes = await uniCloud.uploadFile({
+          filePath: tempFilePath,
+          cloudPath: 'products/' + Date.now() + '-' + Math.random().toString(36).substr(2, 9) + '.png'
+        })
+
+        if (uploadRes.fileID) {
+          // 使用云端URL
+          form.value.cover = uploadRes.fileID
+          console.log('图片上传成功:', uploadRes.fileID)
         }
-      } catch (err) {
-        uni.showToast({ title: err.message || '图片上传失败', icon: 'none' })
+      } catch (e) {
+        console.log('图片上传失败，使用本地路径:', e)
+        // 如果上传失败，使用本地路径（仅开发环境）
+        form.value.cover = tempFilePath
       } finally {
-        uploading.value = false
+        uni.hideLoading()
       }
+    },
+    fail: (err) => {
+      console.log('选择图片失败:', err)
     }
   })
 }
 
 // ========== 加载商品列表 ==========
 const loadProducts = async () => {
-  // 获取后端商品列表
-  const res = await getProducts()
-  if (res.ok && res.list) {
-    // 合并后端商品和本地管理员商品（去重）
-    const adminProducts = getAdminProducts()
-    const allList = [...res.list, ...adminProducts]
-    // 按创建时间排序（新的在前）
-    productList.value = allList.sort((a, b) => {
-      const timeA = new Date(a.createdAt || a._id?.getTimestamp?.() || 0).getTime()
-      const timeB = new Date(b.createdAt || b._id?.getTimestamp?.() || 0).getTime()
-      return timeB - timeA
-    })
-  } else {
-    productList.value = getAdminProducts()
-  }
+  // 获取管理员添加的商品
+  const adminProducts = await getAdminProducts()
+  console.log('获取到管理员商品:', adminProducts)
+
+  // 过滤被标记删除的商品，直接使用云端数据
+  productList.value = adminProducts.filter(p => !p.deleted)
+  console.log('当前商品列表:', productList.value)
+}
+
+// APP 刷新商品列表
+const refreshProducts = () => {
+  console.log('刷新商品列表...')
+  console.log('存储数据:', uni.getStorageSync('admin_products'))
+  loadProducts()
 }
 
 // ========== 交互方法 ==========
@@ -260,11 +326,11 @@ const goBack = () => {
   uni.navigateBack()
 }
 
-const handleSubmit = async () => {
+const handleSubmit = () => {
   if (isEditing.value) {
-    await handleUpdate()
+    handleUpdate()
   } else {
-    await handleAdd()
+    handleAdd()
   }
 }
 
@@ -298,20 +364,22 @@ const handleAdd = async () => {
     priceNow: priceNow,
     priceOrigin: priceOrigin,
     stock: stock,
-    status: 1,
     tags: form.value.tags.trim() ? form.value.tags.split(',').map(t => t.trim()).filter(t => t) : [],
     description: form.value.description.trim()
   }
 
-  // 先尝试调用API创建
-  const res = await createProduct(product)
-  if (!res.ok) {
-    // API失败时保存到本地存储
-    saveAdminProduct(product)
+  // 保存到云端数据库
+  const result = await createProduct(product)
+  console.log('保存商品结果:', result)
+
+  if (!result.ok) {
+    toast(result.message || '保存失败')
+    return
   }
 
   // 更新列表
-  productList.value = getAdminProducts()
+  await loadProducts()
+  console.log('当前商品列表:', productList.value)
 
   // 清空表单
   form.value = {
@@ -332,7 +400,7 @@ const handleAdd = async () => {
 const handleEdit = (index) => {
   const product = productList.value[index]
   // 后端商品用 _id，本地用 id
-  editingId.value = product._id || product.id
+  editingId.value = product.id
   form.value = {
     title: product.title || '',
     cover: product.cover || '',
@@ -347,57 +415,53 @@ const handleEdit = (index) => {
 }
 
 const handleUpdate = async () => {
-  try {
-    if (!form.value.title || !form.value.title.trim()) {
-      toast('请输入商品标题')
-      return
-    }
-    if (!form.value.cover || !form.value.cover.trim()) {
-      toast('请上传商品图片')
-      return
-    }
-
-    const priceNow = parseFloat(form.value.priceNow)
-    if (isNaN(priceNow) || priceNow <= 0) {
-      toast('请输入合法的现价')
-      return
-    }
-
-    const priceOrigin = parseFloat(form.value.priceOrigin) || priceNow
-    const stock = parseInt(form.value.stock)
-    if (isNaN(stock) || stock < 0) {
-      toast('请输入合法的库存数量')
-      return
-    }
-
-    const product = {
-      title: form.value.title.trim(),
-      cover: form.value.cover.trim(),
-      priceNow: priceNow,
-      priceOrigin: priceOrigin,
-      stock: stock,
-      status: 1,
-      tags: form.value.tags ? form.value.tags.split(',').map(t => t.trim()).filter(t => t) : [],
-      description: form.value.description ? form.value.description.trim() : ''
-    }
-
-    // 先尝试调用API更新
-    const res = await updateProduct(editingId.value, product)
-
-    if (!res.ok) {
-      // API失败时更新本地
-      saveAdminProduct({ id: editingId.value, ...product })
-    }
-
-    // 重置表单
-    cancelEdit()
-
-    // 更新列表
-    loadProducts()
-    toast('更新成功')
-  } catch (err) {
-    toast('更新失败: ' + err.message)
+  if (!form.value.title || !form.value.title.trim()) {
+    toast('请输入商品标题')
+    return
   }
+  if (!form.value.cover || !form.value.cover.trim()) {
+    toast('请上传商品图片')
+    return
+  }
+
+  const priceNow = parseFloat(form.value.priceNow)
+  if (isNaN(priceNow) || priceNow <= 0) {
+    toast('请输入合法的现价')
+    return
+  }
+
+  const priceOrigin = parseFloat(form.value.priceOrigin) || priceNow
+  const stock = parseInt(form.value.stock)
+  if (isNaN(stock) || stock < 0) {
+    toast('请输入合法的库存数量')
+    return
+  }
+
+  const product = {
+    title: form.value.title.trim(),
+    cover: form.value.cover.trim(),
+    priceNow: priceNow,
+    priceOrigin: priceOrigin,
+    stock: stock,
+    tags: form.value.tags ? form.value.tags.split(',').map(t => t.trim()).filter(t => t) : [],
+    description: form.value.description ? form.value.description.trim() : ''
+  }
+
+  // 更新云端商品
+  const result = await updateProduct(editingId.value, product)
+  console.log('更新商品结果:', result)
+
+  if (!result.ok) {
+    toast(result.message || '更新失败')
+    return
+  }
+
+  // 重置表单
+  cancelEdit()
+
+  // 更新列表
+  await loadProducts()
+  toast('更新成功')
 }
 
 const cancelEdit = () => {
@@ -418,19 +482,18 @@ const cancelEdit = () => {
 const handleDelete = async (index) => {
   const product = productList.value[index]
   const productId = product._id || product.id
+
   uni.showModal({
     title: '确认删除',
     content: '确定要删除该商品吗？',
     success: async (res) => {
       if (res.confirm) {
-        // 先尝试调用API删除（后端商品用 _id）
-        const apiRes = await deleteProduct(productId)
-        if (!apiRes.ok) {
-          // API失败时删除本地
-          deleteAdminProduct(productId)
-        }
+        // 删除云端商品
+        const result = await deleteProduct(productId)
+        console.log('删除商品结果:', result)
+
         // 重新加载商品列表
-        loadProducts()
+        await loadProducts()
         toast('已删除')
       }
     }
@@ -578,6 +641,10 @@ $glass-border: rgba(255, 255, 255, 0.5);
   margin-bottom: 28rpx;
   padding-bottom: 20rpx;
   border-bottom: 1rpx solid #f5f5f5;
+
+  .card__icon {
+    flex-shrink: 0;
+  }
 }
 
 .card__icon {
@@ -590,8 +657,14 @@ $glass-border: rgba(255, 255, 255, 0.5);
   align-items: center;
   justify-content: center;
   box-shadow: 0 4rpx 12rpx rgba(255, 144, 0, 0.1);
+  flex-shrink: 0;
 
   svg {
+    width: 28rpx;
+    height: 28rpx;
+  }
+
+  image {
     width: 28rpx;
     height: 28rpx;
   }
@@ -612,18 +685,6 @@ $glass-border: rgba(255, 255, 255, 0.5);
   font-weight: 700;
   color: $text;
   letter-spacing: 1rpx;
-  position: relative;
-
-  &::after {
-    content: '';
-    position: absolute;
-    bottom: -8rpx;
-    left: 0;
-    width: 40rpx;
-    height: 4rpx;
-    background: linear-gradient(90deg, $primary, $primary-light);
-    border-radius: 2rpx;
-  }
 }
 
 /* 表单 */
@@ -710,7 +771,7 @@ $glass-border: rgba(255, 255, 255, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10rpx;
+  gap: 8rpx;
   height: 96rpx;
   border-radius: 20rpx;
   background: linear-gradient(135deg, $primary 0%, $primary-light 100%);
@@ -724,9 +785,23 @@ $glass-border: rgba(255, 255, 255, 0.5);
   letter-spacing: 2rpx;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
-  svg {
+  &__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 32rpx;
     height: 32rpx;
+    flex-shrink: 0;
+
+    svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    image {
+      width: 100%;
+      height: 100%;
+    }
   }
 
   &:active {
@@ -741,6 +816,10 @@ $glass-border: rgba(255, 255, 255, 0.5);
   box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.04);
   border: 2rpx solid #eee;
 
+  .btn__icon svg {
+    stroke: $text-body;
+  }
+
   &:active {
     background: #f5f5f5;
     border-color: #ddd;
@@ -749,6 +828,26 @@ $glass-border: rgba(255, 255, 255, 0.5);
 
 /* 图片上传 */
 .image-upload {
+  width: 180rpx;
+  height: 180rpx;
+  border: 2rpx dashed $border-color;
+  border-radius: 20rpx;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #faf9f7, #f5f3f0);
+  transition: all 0.3s ease;
+
+  &:active {
+    border-color: $primary;
+    background: rgba(255, 144, 0, 0.05);
+    transform: scale(0.98);
+  }
+}
+
+/* 图片上传按钮 */
+.image-upload-btn {
   width: 180rpx;
   height: 180rpx;
   border: 2rpx dashed $border-color;
@@ -785,10 +884,18 @@ $glass-border: rgba(255, 255, 255, 0.5);
     color: $sub;
     margin-bottom: 12rpx;
     opacity: 0.6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
     svg {
       width: 100%;
       height: 100%;
+    }
+
+    image {
+      width: 56rpx;
+      height: 56rpx;
     }
   }
 
@@ -879,16 +986,30 @@ $glass-border: rgba(255, 255, 255, 0.5);
 .product-item__btn {
   display: flex;
   align-items: center;
-  gap: 8rpx;
+  justify-content: center;
+  gap: 6rpx;
   font-size: 26rpx;
-  padding: 14rpx 24rpx;
+  padding: 12rpx 20rpx;
   border-radius: 14rpx;
   font-weight: 500;
-  transition: all 0.2s ease;
 
-  svg {
+  &-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 28rpx;
     height: 28rpx;
+    flex-shrink: 0;
+
+    svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    image {
+      width: 100%;
+      height: 100%;
+    }
   }
 
   &.edit {
@@ -910,6 +1031,19 @@ $glass-border: rgba(255, 255, 255, 0.5);
   }
 }
 
+/* 小程序按钮符号样式 */
+.btn-symbol {
+  font-size: 28rpx;
+  line-height: 1;
+  font-family: 'Segoe UI Symbol', 'Apple Color Emoji', sans-serif;
+}
+
+.empty-symbol {
+  font-size: 80rpx;
+  line-height: 1;
+  font-family: 'Segoe UI Symbol', 'Apple Color Emoji', sans-serif;
+}
+
 /* 空状态 */
 .empty {
   padding: 120rpx 0;
@@ -922,10 +1056,22 @@ $glass-border: rgba(255, 255, 255, 0.5);
     margin: 0 auto 32rpx;
     color: $sub;
     opacity: 0.3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
     svg {
       width: 100%;
       height: 100%;
+    }
+
+    image {
+      width: 100rpx;
+      height: 100rpx;
+    }
+
+    text.empty-symbol {
+      font-size: 80rpx;
     }
   }
 

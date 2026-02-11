@@ -1,179 +1,12 @@
 /**
- * 地址模块 API
- *
- * 对接后端 API：
- * - GET /addresses - 获取地址列表
- * - POST /addresses - 创建地址
- * - PUT /addresses/:id - 更新地址
- * - DELETE /addresses/:id - 删除地址
- * - PUT /addresses/:id/default - 设为默认
+ * 地址模块 API（uniCloud 云数据库版）
  */
 
-import { get, post, put, del } from './request.js'
+import { dbAdd, dbWhere, dbUpdate, dbRemove, dbGet } from './cloud-db.js'
+import { getCurrentUserId } from './user.js'
 
-// 本地存储 Key（用于离线存储）
-const ADDRESSES_KEY = 'user_addresses'
-
-/**
- * 获取地址列表
- */
-export async function getAddresses() {
-  try {
-    const res = await get('/addresses')
-    if (res.code === 200 && res.data) {
-      // 将 _id 映射为 id
-      const list = res.data.map(addr => ({
-        ...addr,
-        id: addr._id || addr.id
-      }))
-      return { ok: true, list }
-    }
-    return { ok: false, message: res.message || '获取地址列表失败' }
-  } catch {
-    return { ok: false, message: '网络错误，获取地址失败' }
-  }
-}
-
-/**
- * 获取单个地址
- */
-export async function getAddress(id) {
-  try {
-    const res = await get(`/addresses/${id}`)
-    if (res.code === 200 && res.data) {
-      return { ok: true, data: { ...res.data, id: res.data._id || res.data.id } }
-    }
-    return { ok: false, message: '地址不存在' }
-  } catch {
-    return { ok: false, message: '获取地址失败' }
-  }
-}
-
-/**
- * 获取默认地址
- */
-export async function getDefaultAddress() {
-  const list = await getAddresses()
-  if (list.ok && list.list.length > 0) {
-    const defaultAddr = list.list.find(a => a.isDefault)
-    if (defaultAddr) return { ok: true, data: defaultAddr }
-    return { ok: true, data: list.list[0] }
-  }
-  return { ok: false, data: null }
-}
-
-/**
- * 创建地址
- * @param {Object} data - 地址数据
- * @param {string} data.name - 收货人姓名
- * @param {string} data.phone - 手机号码
- * @param {string} data.detail - 详细地址
- * @param {boolean} data.isDefault - 是否默认
- */
-export async function createAddress(data) {
-  try {
-    const res = await post('/addresses', data)
-    if (res.code === 200) {
-      return { ok: true, id: res.data.id || res.data._id }
-    }
-    return { ok: false, message: res.message || '创建地址失败' }
-  } catch {
-    return { ok: false, message: '网络错误，创建地址失败' }
-  }
-}
-
-/**
- * 更新地址
- */
-export async function updateAddress(id, data) {
-  try {
-    const res = await put(`/addresses/${id}`, data)
-    if (res.code === 200) {
-      return { ok: true }
-    }
-    return { ok: false, message: res.message || '更新地址失败' }
-  } catch {
-    return { ok: false, message: '网络错误，更新地址失败' }
-  }
-}
-
-/**
- * 删除地址
- */
-export async function deleteAddress(id) {
-  try {
-    const res = await del(`/addresses/${id}`)
-    if (res.code === 200) {
-      return { ok: true }
-    }
-    return { ok: false, message: res.message || '删除地址失败' }
-  } catch {
-    return { ok: false, message: '网络错误，删除地址失败' }
-  }
-}
-
-/**
- * 设为默认地址
- */
-export async function setDefaultAddress(id) {
-  try {
-    const res = await put(`/addresses/${id}/default`)
-    if (res.code === 200) {
-      return { ok: true }
-    }
-    return { ok: false, message: res.message || '设置默认地址失败' }
-  } catch {
-    return { ok: false, message: '网络错误，设置默认地址失败' }
-  }
-}
-
-// ========== 本地存储操作（保留供 checkout 等页面使用） ==========
-
-export function getLocalAddresses() {
-  try {
-    const raw = uni.getStorageSync(ADDRESSES_KEY) || '[]'
-    return JSON.parse(raw)
-  } catch {
-    return []
-  }
-}
-
-export function saveLocalAddress(data) {
-  const addresses = getLocalAddresses()
-  const newAddr = {
-    id: 'addr_' + Date.now(),
-    ...data,
-    isDefault: addresses.length === 0,
-    createdAt: new Date().toISOString()
-  }
-  addresses.unshift(newAddr)
-  uni.setStorageSync(ADDRESSES_KEY, JSON.stringify(addresses))
-  return newAddr
-}
-
-export function updateLocalAddress(id, data) {
-  const addresses = getLocalAddresses()
-  const index = addresses.findIndex(a => a.id === id)
-  if (index !== -1) {
-    addresses[index] = { ...addresses[index], ...data, updatedAt: new Date().toISOString() }
-    uni.setStorageSync(ADDRESSES_KEY, JSON.stringify(addresses))
-    return addresses[index]
-  }
-  return null
-}
-
-export function deleteLocalAddress(id) {
-  const addresses = getLocalAddresses().filter(a => a.id !== id)
-  uni.setStorageSync(ADDRESSES_KEY, JSON.stringify(addresses))
-}
-
-export function setLocalDefaultAddress(id) {
-  const addresses = getLocalAddresses().map(a => ({
-    ...a,
-    isDefault: a.id === id
-  }))
-  uni.setStorageSync(ADDRESSES_KEY, JSON.stringify(addresses))
-}
+// 常量
+const ADDRESSES_COLLECTION = 'addresses'
 
 // 地址类型选项
 export const ADDRESS_TYPES = [
@@ -190,3 +23,226 @@ export const PROVINCES = [
   '湖北', '湖南', '广东', '广西', '海南', '重庆', '四川', '贵州',
   '云南', '陕西', '甘肃', '青海', '宁夏', '新疆', '香港', '澳门', '台湾'
 ]
+
+/**
+ * 获取所有地址
+ */
+export async function getAddresses() {
+  try {
+    const userId = getCurrentUserId()
+    if (!userId) {
+      return { ok: true, list: [] }
+    }
+
+    const res = await dbWhere(ADDRESSES_COLLECTION, { userId })
+    let list = res.result.data || []
+
+    // 转换 _id 为 id
+    list = list.map(addr => ({
+      ...addr,
+      id: addr._id
+    }))
+
+    // 清理：确保只有一个默认地址
+    list = cleanupAddresses(list)
+
+    return { ok: true, list }
+  } catch (error) {
+    console.error('获取地址失败:', error)
+    return { ok: true, list: [] }
+  }
+}
+
+/**
+ * 清理地址数据，确保只有一个默认地址
+ */
+function cleanupAddresses(addresses) {
+  if (addresses.length === 0) return addresses
+
+  // 如果只有一个地址，自动设为默认
+  if (addresses.length === 1 && !addresses[0].isDefault) {
+    return [{ ...addresses[0], isDefault: true }]
+  }
+
+  // 找到所有默认地址，保留最后一个（最新的）
+  const defaultIndex = addresses.findIndex(a => a.isDefault)
+  if (defaultIndex === -1) return addresses
+
+  return addresses.map((addr, index) => {
+    if (addr.isDefault && index !== defaultIndex) {
+      return { ...addr, isDefault: false }
+    }
+    return addr
+  })
+}
+
+/**
+ * 获取单个地址
+ */
+export async function getAddress(id) {
+  try {
+    const res = await dbGet(ADDRESSES_COLLECTION, id)
+    if (res.result.data) {
+      return { ok: true, data: { ...res.result.data, id: res.result.data._id } }
+    }
+    return { ok: false, message: '地址不存在' }
+  } catch (error) {
+    return { ok: false, message: error.message }
+  }
+}
+
+/**
+ * 获取默认地址
+ */
+export async function getDefaultAddress() {
+  try {
+    const { list } = await getAddresses()
+    if (list.length > 0) {
+      const defaultAddr = list.find(a => a.isDefault)
+      if (defaultAddr) return { ok: true, data: defaultAddr }
+      return { ok: true, data: list[0] }
+    }
+    return { ok: false, data: null }
+  } catch (error) {
+    return { ok: false, message: error.message }
+  }
+}
+
+/**
+ * 创建地址
+ */
+export async function createAddress(data) {
+  try {
+    const userId = getCurrentUserId()
+    if (!userId) {
+      return { ok: false, message: '请先登录' }
+    }
+
+    const { list } = await getAddresses()
+    const now = Date.now()
+
+    let newAddr = {
+      userId,
+      ...data,
+      createdAt: now,
+      updatedAt: now
+    }
+
+    // 如果用户选择了设为默认，或者列表为空，则设为默认
+    if (data.isDefault || list.length === 0) {
+      // 取消其他地址的默认状态
+      for (const addr of list) {
+        await dbUpdate(ADDRESSES_COLLECTION, addr.id, {
+          isDefault: false,
+          updatedAt: now
+        })
+      }
+      newAddr.isDefault = true
+    }
+
+    const res = await dbAdd(ADDRESSES_COLLECTION, newAddr)
+
+    return { ok: true, id: res.result.id }
+  } catch (error) {
+    return { ok: false, message: error.message }
+  }
+}
+
+/**
+ * 更新地址
+ */
+export async function updateAddress(id, data) {
+  try {
+    const userId = getCurrentUserId()
+    if (!userId) {
+      return { ok: false, message: '请先登录' }
+    }
+
+    // 如果设置为默认地址，取消其他地址的默认状态
+    if (data.isDefault) {
+      const { list } = await getAddresses()
+      for (const addr of list) {
+        if (addr.id !== id) {
+          await dbUpdate(ADDRESSES_COLLECTION, addr.id, {
+            isDefault: false,
+            updatedAt: Date.now()
+          })
+        }
+      }
+    }
+
+    await dbUpdate(ADDRESSES_COLLECTION, id, {
+      ...data,
+      updatedAt: Date.now()
+    })
+
+    return { ok: true }
+  } catch (error) {
+    return { ok: false, message: error.message }
+  }
+}
+
+/**
+ * 删除地址
+ */
+export async function deleteAddress(id) {
+  try {
+    await dbRemove(ADDRESSES_COLLECTION, id)
+    return { ok: true }
+  } catch (error) {
+    return { ok: false, message: error.message }
+  }
+}
+
+/**
+ * 设为默认地址
+ */
+export async function setDefaultAddress(id) {
+  try {
+    const userId = getCurrentUserId()
+    if (!userId) {
+      return { ok: false, message: '请先登录' }
+    }
+
+    const { list } = await getAddresses()
+    const now = Date.now()
+
+    // 取消所有默认
+    for (const addr of list) {
+      await dbUpdate(ADDRESSES_COLLECTION, addr.id, {
+        isDefault: addr.id === id,
+        updatedAt: now
+      })
+    }
+
+    return { ok: true }
+  } catch (error) {
+    return { ok: false, message: error.message }
+  }
+}
+
+/**
+ * 获取选中的地址（用于下单页面）
+ */
+export function getSelectedAddress() {
+  try {
+    const raw = uni.getStorageSync('selected_address')
+    if (raw) {
+      return JSON.parse(raw)
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * 设置选中的地址
+ */
+export function setSelectedAddress(address) {
+  if (address) {
+    uni.setStorageSync('selected_address', JSON.stringify(address))
+  } else {
+    uni.removeStorageSync('selected_address')
+  }
+}

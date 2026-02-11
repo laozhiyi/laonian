@@ -13,7 +13,14 @@
 
     <!-- 地址列表 -->
     <scroll-view class="scroll" :style="scrollStyle" scroll-y>
-      <view class="address-list" v-if="addressList.length > 0">
+      <!-- 加载状态 -->
+      <view class="loading" v-if="loading">
+        <view class="loading__spinner"></view>
+        <text class="loading__text">加载中...</text>
+      </view>
+
+      <!-- 地址列表 -->
+      <view class="address-list" v-else-if="addressList.length > 0">
         <view
           class="address-card"
           v-for="(addr, index) in addressList"
@@ -33,28 +40,54 @@
           <view class="address-card__actions">
             <view class="address-card__action" @tap="setDefault(addr)">
               <view class="address-card__action-icon">
+                <!-- #ifdef H5 -->
                 <svg v-if="addr.isDefault" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M9 16.17L4.83 12L3.41 13.41L9 19L21 7L19.59 5.59L9 16.17Z" fill="#4CAF50"/>
                 </svg>
                 <svg v-else viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <circle cx="12" cy="12" r="9" stroke="#ddd" stroke-width="2"/>
                 </svg>
+                <!-- #endif -->
+                <!-- #ifdef MP-WEIXIN -->
+                <text v-if="addr.isDefault" class="btn-symbol" style="color: #4CAF50;">&#x2714;</text>
+                <text v-else class="btn-symbol" style="color: #ddd;">&#x25CB;</text>
+                <!-- #endif -->
+                <!-- #ifdef APP-PLUS -->
+                <text v-if="addr.isDefault" class="btn-symbol" style="color: #4CAF50;">&#x2714;</text>
+                <text v-else class="btn-symbol" style="color: #ddd;">&#x25CB;</text>
+                <!-- #endif -->
               </view>
               <text :class="{ 'address-card__action-text--active': addr.isDefault }">默认地址</text>
             </view>
             <view class="address-card__action" @tap="goEdit(addr)">
               <view class="address-card__action-icon">
+                <!-- #ifdef H5 -->
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13M18.4142 5.41421L21 8L15.5858 13.4142L13 10.8284L18.4142 5.41421Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
+                <!-- #endif -->
+                <!-- #ifdef MP-WEIXIN -->
+                <text class="btn-symbol">&#x270F;</text>
+                <!-- #endif -->
+                <!-- #ifdef APP-PLUS -->
+                <text class="btn-symbol">&#x270F;</text>
+                <!-- #endif -->
               </view>
               <text>编辑</text>
             </view>
             <view class="address-card__action address-card__action--delete" @tap="deleteAddr(addr)">
               <view class="address-card__action-icon">
+                <!-- #ifdef H5 -->
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M3 6H21M19 6V20C19 20.5523 18.5523 21 18 21H6C5.44772 21 5 20.5523 5 20V6M8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
+                <!-- #endif -->
+                <!-- #ifdef MP-WEIXIN -->
+                <text class="btn-symbol">&#x1F5D1;</text>
+                <!-- #endif -->
+                <!-- #ifdef APP-PLUS -->
+                <text class="btn-symbol">&#x1F5D1;</text>
+                <!-- #endif -->
               </view>
               <text>删除</text>
             </view>
@@ -63,11 +96,19 @@
       </view>
 
       <!-- 空状态 -->
-      <view class="empty" v-else>
+      <view class="empty" v-else-if="!loading">
         <view class="empty__icon">
+          <!-- #ifdef H5 -->
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21M18 8C18 6.4087 17.3679 4.88258 16.2426 3.75736C15.1174 2.63214 13.5913 2 12 2C10.4087 2 8.88258 2.63214 7.75736 3.75736C6.63214 4.88258 6 6.4087 6 8M18 8V5M18 8H15M6 8V5M6 8H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
+          <!-- #endif -->
+          <!-- #ifdef MP-WEIXIN -->
+          <text class="empty-symbol">&#x1F4CD;</text>
+          <!-- #endif -->
+          <!-- #ifdef APP-PLUS -->
+          <text class="empty-symbol">&#x1F4CD;</text>
+          <!-- #endif -->
         </view>
         <text class="empty__text">暂无收货地址</text>
         <text class="empty__tip">添加地址方便收货</text>
@@ -79,14 +120,14 @@
     </scroll-view>
 
     <!-- 底部悬浮添加按钮 -->
-    <view class="float-btn" @tap="goAdd" v-if="addressList.length > 0">
+    <view class="float-btn" @tap="goAdd" v-if="!loading && addressList.length > 0">
       <text>添加地址</text>
     </view>
   </view>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { getAddresses, deleteAddress, setDefaultAddress } from '@/utils/address.js'
 
 // ========== 状态栏高度 ==========
@@ -96,6 +137,7 @@ const headerHeight = computed(() => navHeight.value)
 
 // ========== 地址列表 ==========
 const addressList = ref([])
+const loading = ref(true)
 
 // ========== 手机号脱敏 ==========
 const formatPhone = (phone) => {
@@ -111,16 +153,21 @@ const scrollStyle = computed(() => ({
 
 // ========== 加载地址列表 ==========
 const loadAddresses = async () => {
-  const res = await getAddresses()
-  if (res.ok && res.list) {
-    // 排序：默认地址在前
-    addressList.value = res.list.sort((a, b) => {
-      if (a.isDefault) return -1
-      if (b.isDefault) return 1
-      return 0
-    })
-  } else {
-    addressList.value = []
+  loading.value = true
+  try {
+    const res = await getAddresses()
+    if (res.ok && res.list) {
+      // 排序：默认地址在前
+      addressList.value = res.list.sort((a, b) => {
+        if (a.isDefault) return -1
+        if (b.isDefault) return 1
+        return 0
+      })
+    } else {
+      addressList.value = []
+    }
+  } finally {
+    loading.value = false
   }
 }
 
@@ -182,6 +229,16 @@ onMounted(() => {
   const sys = uni.getSystemInfoSync()
   statusBarHeight.value = sys.statusBarHeight || 0
   loadAddresses()
+
+  // 监听地址变化事件
+  uni.$on('addressChanged', () => {
+    loadAddresses()
+  })
+})
+
+// 页面卸载时移除事件监听
+onUnmounted(() => {
+  uni.$off('addressChanged')
 })
 </script>
 
@@ -295,6 +352,34 @@ $border-color: #F0E6DC;
 /* 滚动区域 */
 .scroll {
   width: 100%;
+}
+
+/* 加载状态 */
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 200rpx 0;
+}
+
+.loading__spinner {
+  width: 64rpx;
+  height: 64rpx;
+  border: 6rpx solid #f0f0f0;
+  border-top-color: $primary;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.loading__text {
+  margin-top: 24rpx;
+  font-size: 28rpx;
+  color: $sub;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 /* 地址列表 */
@@ -412,8 +497,14 @@ $border-color: #F0E6DC;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 
   svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  image {
     width: 100%;
     height: 100%;
   }
@@ -449,10 +540,18 @@ $border-color: #F0E6DC;
   color: $sub;
   opacity: 0.4;
   animation: float 3s ease-in-out infinite;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
   svg {
     width: 100%;
     height: 100%;
+  }
+
+  image {
+    width: 100rpx;
+    height: 100rpx;
   }
 }
 
@@ -489,6 +588,20 @@ $border-color: #F0E6DC;
     transform: scale(0.95);
     box-shadow: 0 4rpx 16rpx rgba(255, 144, 0, 0.3);
   }
+}
+
+/* 小程序按钮符号样式 */
+.btn-symbol {
+  font-size: 32rpx;
+  line-height: 1;
+  font-family: 'Segoe UI Symbol', 'Apple Color Emoji', sans-serif;
+}
+
+.empty-symbol {
+  font-size: 100rpx;
+  line-height: 1;
+  opacity: 0.4;
+  font-family: 'Segoe UI Symbol', 'Apple Color Emoji', sans-serif;
 }
 
 /* 底部安全区 */

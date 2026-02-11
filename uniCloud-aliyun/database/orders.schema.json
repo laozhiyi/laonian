@@ -1,0 +1,25 @@
+{
+	"bsonType": "object",
+	"required": ["userId", "totalPrice", "status"],
+	"permission": {
+		"read": true,
+		"create": true,
+		"update": true,
+		"delete": true
+	},
+	"properties": {
+		"_id": { "description": "ID" },
+		"orderNo": { "bsonType": "string" },
+		"userId": { "bsonType": "string" },
+		"items": { "bsonType": "array" },
+		"address": { "bsonType": "object" },
+		"totalPrice": { "bsonType": "number" },
+		"remark": { "bsonType": "string" },
+		"status": { "bsonType": "string" },
+		"deleted": { "bsonType": "bool" },
+		"createdAt": { "bsonType": "timestamp" },
+		"updatedAt": { "bsonType": "timestamp" },
+		"completedAt": { "bsonType": "timestamp" },
+		"refundedAt": { "bsonType": "timestamp" }
+	}
+}

@@ -17,19 +17,41 @@
       <view class="section status-section">
         <view class="status-card" :class="getStatusClass(orderInfo.status)">
           <view class="status-card__icon">
-            <svg v-if="orderInfo.status === 'paid'" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M7 18C7.55228 18 8 17.5523 8 17C8 16.4477 7.55228 16 7 16C6.44772 16 6 16.4477 6 17C6 17.5523 6.44772 18 7 18Z" stroke="currentColor" stroke-width="2"/>
-              <path d="M17 18C17.5523 18 18 17.5523 18 17C18 16.4477 17.5523 16 17 16C16.4477 16 16 16.4477 16 17C16 17.5523 16.4477 18 17 18Z" stroke="currentColor" stroke-width="2"/>
-              <path d="M1 1H5L7.68 14.39C7.77144 14.8504 8.02191 15.264 8.38755 15.5583C8.75318 15.8526 9.2107 16.009 9.68 16H18.4C18.8693 16.009 19.3268 15.8526 19.6925 15.5583C20.0581 15.264 20.3086 14.8504 20.4 14.39L22 6H6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <!-- #ifdef H5 -->
+            <svg v-if="orderInfo.status === 'pending'" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2Z" stroke="currentColor" stroke-width="2"/>
+              <path d="M12 6V12L16 14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
             </svg>
             <svg v-else-if="orderInfo.status === 'shipped'" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M1 12C1 12 5 4 12 4C19 4 23 12 23 12C23 12 19 20 12 20C5 20 1 12 1 12Z" stroke="currentColor" stroke-width="2"/>
               <path d="M12 12C13.5 12 15 10.5 15 9C15 7.5 13.5 6 12 6C10.5 6 9 7.5 9 9C9 10.5 10.5 12 12 12Z" stroke="currentColor" stroke-width="2"/>
             </svg>
-            <svg v-else viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg v-else-if="orderInfo.status === 'completed'" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2Z" stroke="currentColor" stroke-width="2"/>
               <path d="M8 12L11 15L16 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
+            <svg v-else-if="orderInfo.status === 'refunded'" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" stroke-width="2"/>
+              <path d="M15 9L9 15M9 9L15 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <svg v-else viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2Z" stroke="currentColor" stroke-width="2"/>
+            </svg>
+            <!-- #endif -->
+            <!-- #ifdef MP-WEIXIN -->
+            <text v-if="orderInfo.status === 'pending'" class="status-symbol">&#x23F0;</text>
+            <text v-else-if="orderInfo.status === 'shipped'" class="status-symbol">&#x1F69B;</text>
+            <text v-else-if="orderInfo.status === 'completed'" class="status-symbol">&#x2714;</text>
+            <text v-else-if="orderInfo.status === 'refunded'" class="status-symbol">&#x274C;</text>
+            <text v-else class="status-symbol">&#x2714;</text>
+            <!-- #endif -->
+            <!-- #ifdef APP-PLUS -->
+            <text v-if="orderInfo.status === 'pending'" class="status-symbol">&#x23F0;</text>
+            <text v-else-if="orderInfo.status === 'shipped'" class="status-symbol">&#x1F69B;</text>
+            <text v-else-if="orderInfo.status === 'completed'" class="status-symbol">&#x2714;</text>
+            <text v-else-if="orderInfo.status === 'refunded'" class="status-symbol">&#x274C;</text>
+            <text v-else class="status-symbol">&#x2714;</text>
+            <!-- #endif -->
           </view>
           <view class="status-card__info">
             <text class="status-card__title">{{ getStatusText(orderInfo.status) }}</text>
@@ -56,18 +78,24 @@
       <!-- 商品列表 -->
       <view class="section goods-section">
         <view class="section-title">商品信息</view>
-        <view class="goods-list">
+        <view class="goods-list" v-if="orderInfo.items && orderInfo.items.length > 0">
           <view class="goods-item" v-for="(item, index) in orderInfo.items" :key="index">
             <image class="goods-item__cover" :src="item.cover" mode="aspectFill" />
             <view class="goods-item__info">
               <view class="goods-item__title">{{ item.title }}</view>
               <view class="goods-item__spec">{{ item.spec || '默认规格' }}</view>
               <view class="goods-item__row">
-                <text class="goods-item__price">¥{{ item.price.toFixed(2) }}</text>
+                <text class="goods-item__price">¥{{ (item.price || 0).toFixed(2) }}</text>
                 <text class="goods-item__quantity">x{{ item.quantity }}</text>
               </view>
             </view>
           </view>
+        </view>
+        <view class="goods-empty" v-else-if="hasLoaded">
+          <text class="goods-empty__text">暂无商品信息</text>
+        </view>
+        <view class="goods-empty" v-else>
+          <text class="goods-empty__text">加载中...</text>
         </view>
       </view>
 
@@ -109,7 +137,7 @@
         <view class="section-title">价格明细</view>
         <view class="price-row">
           <text class="price-row__label">商品金额</text>
-          <text class="price-row__value">¥{{ orderInfo.totalPrice.toFixed(2) }}</text>
+          <text class="price-row__value">¥{{ (orderInfo.totalPrice || 0).toFixed(2) }}</text>
         </view>
         <view class="price-row">
           <text class="price-row__label">运费</text>
@@ -117,21 +145,27 @@
         </view>
         <view class="price-row price-row--total">
           <text class="price-row__label">实付金额</text>
-          <text class="price-row__value price-row__value--primary">¥{{ orderInfo.totalPrice.toFixed(2) }}</text>
+          <text class="price-row__value price-row__value--primary">¥{{ (orderInfo.totalPrice || 0).toFixed(2) }}</text>
         </view>
 
         <!-- 操作按钮 -->
-        <view class="action-buttons" v-if="showActionBar">
+        <view class="action-buttons">
           <view
             class="action-btn action-btn--primary"
-            v-if="orderInfo.status === 'shipped'"
+            v-if="orderInfo.status === 'pending'"
             @tap="confirmReceive"
           >确认收货</view>
           <view
             class="action-btn action-btn--outline"
-            v-if="orderInfo.status === 'shipped'"
+            v-if="orderInfo.status === 'pending' || orderInfo.status === 'shipped'"
             @tap="refund"
           >退货</view>
+          <!-- 退货后显示删除按钮 -->
+          <view
+            class="action-btn action-btn--danger"
+            v-if="orderInfo.status === 'refunded'"
+            @tap="handleDeleteOrder"
+          >删除订单</view>
         </view>
       </view>
     </scroll-view>
@@ -140,13 +174,20 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { getOrderDetail, confirmOrder, refundOrder } from '@/utils/order.js'
+import { onLoad } from '@dcloudio/uni-app'
+import { getOrderDetail, confirmOrder, refundOrder, deleteOrder as utilsDeleteOrder } from '@/utils/order.js'
 import { ORDER_STATUS_TEXT } from '@/utils/order.js'
+
+// 包装删除订单函数，避免命名冲突
+const deleteOrderFromUtils = utilsDeleteOrder
 
 // ========== 状态栏高度 ==========
 const statusBarHeight = ref(0)
 const navHeight = ref(88)
 const headerHeight = computed(() => navHeight.value)
+
+// ========== 订单ID ==========
+const orderId = ref('')
 
 // ========== 订单数据 ==========
 const orderInfo = ref({
@@ -164,6 +205,9 @@ const orderInfo = ref({
   completedAt: '',
 })
 
+// ========== 加载状态 ==========
+const hasLoaded = ref(false)
+
 // ========== 滚动区域样式 ==========
 const scrollStyle = computed(() => ({
   paddingTop: (statusBarHeight.value + headerHeight.value) + 'px',
@@ -180,30 +224,61 @@ const actionBarStyle = computed(() => {
 
 // ========== 是否显示操作栏 ==========
 const showActionBar = computed(() => {
-  return orderInfo.value.status === 'shipped'
+  return orderInfo.value.status === 'shipped' || orderInfo.value.status === 'refunded'
 })
 
 // ========== 加载订单详情 ==========
 const loadOrderDetail = async () => {
-  const pages = getCurrentPages()
-  const currentPage = pages[pages.length - 1]
-  const id = currentPage.options?.id
-
-  if (!id) {
+  if (!orderId.value) {
+    console.log('订单ID不存在')
     uni.showToast({ title: '订单不存在', icon: 'none' })
+    hasLoaded.value = true
     return
   }
 
+  console.log('开始加载订单详情, id:', orderId.value)
   uni.showLoading({ title: '加载中...' })
-  const res = await getOrderDetail(id)
-  uni.hideLoading()
 
-  if (res.ok && res.data) {
-    orderInfo.value = res.data
-  } else {
-    uni.showToast({ title: res.message || '获取订单详情失败', icon: 'none' })
+  try {
+    const res = await getOrderDetail(orderId.value)
+    uni.hideLoading()
+    hasLoaded.value = true
+
+    console.log('订单详情返回:', res)
+
+    if (res.ok && res.data) {
+      // 处理 uniCloud 返回数组格式的情况
+      let orderData = res.data
+      if (Array.isArray(res.data) && res.data.length > 0) {
+        orderData = res.data[0]
+      }
+
+      orderInfo.value = {
+        ...orderData,
+        items: orderData.items || []
+      }
+      console.log('订单数据已设置:', orderInfo.value)
+    } else {
+      uni.showToast({ title: res.message || '获取订单详情失败', icon: 'none' })
+    }
+  } catch (e) {
+    uni.hideLoading()
+    hasLoaded.value = true
+    console.error('加载订单详情出错:', e)
+    uni.showToast({ title: '加载失败', icon: 'none' })
   }
 }
+
+// ========== onLoad 获取参数 ==========
+onLoad((options) => {
+  orderId.value = options?.id || ''
+  if (orderId.value) {
+    loadOrderDetail()
+  } else {
+    uni.showToast({ title: '订单不存在', icon: 'none' })
+    hasLoaded.value = true
+  }
+})
 
 // ========== 状态文本 ==========
 const getStatusText = (status) => {
@@ -212,18 +287,20 @@ const getStatusText = (status) => {
 
 const getStatusClass = (status) => {
   const map = {
-    paid: 'status--paid',
+    pending: 'status--paid',
     shipped: 'status--shipped',
     completed: 'status--completed',
+    refunded: 'status--refunded',
   }
   return map[status] || ''
 }
 
 const getStatusDesc = (status) => {
   const map = {
-    paid: '商家已发货，等待收货',
+    pending: '等待商家发货',
     shipped: '商家已发货，等待收货',
     completed: '订单已完成',
+    refunded: '已退货退款',
   }
   return map[status] || ''
 }
@@ -272,17 +349,37 @@ const confirmReceive = () => {
 const refund = () => {
   uni.showModal({
     title: '退货确认',
-    content: '确定要退货吗？退货后订单将被取消',
+    content: '确定要退货吗？退货后库存将恢复',
     success: async (res) => {
       if (res.confirm) {
-        const result = await refundOrder(orderInfo.value.id)
-        if (result.ok) {
+        const refundRes = await refundOrder(orderInfo.value.id)
+        if (refundRes.ok) {
           uni.showToast({ title: '退货成功', icon: 'success' })
+          loadOrderDetail()
+        } else {
+          uni.showToast({ title: refundRes.message || '退货失败', icon: 'none' })
+        }
+      }
+    }
+  })
+}
+
+// 删除订单
+const handleDeleteOrder = () => {
+  uni.showModal({
+    title: '删除订单',
+    content: '确定要删除该订单吗？',
+    success: async (res) => {
+      if (res.confirm) {
+        const result = await deleteOrderFromUtils(orderInfo.value.id)
+        if (result.ok) {
+          uni.showToast({ title: '订单已删除', icon: 'success' })
           setTimeout(() => {
-            uni.navigateBack()
+            // 使用 reLaunch 跳转到订单列表，强制刷新数据
+            uni.reLaunch({ url: '/pages/order/orders' })
           }, 1500)
         } else {
-          uni.showToast({ title: result.message || '退货失败', icon: 'none' })
+          uni.showToast({ title: result.message || '删除失败', icon: 'none' })
         }
       }
     }
@@ -293,7 +390,6 @@ const refund = () => {
 onMounted(() => {
   const sys = uni.getSystemInfoSync()
   statusBarHeight.value = sys.statusBarHeight || 0
-  loadOrderDetail()
 })
 </script>
 
@@ -469,6 +565,10 @@ $bg: #FFF9F3;
     background: linear-gradient(135deg, $sub 0%, #8E8E93 100%);
     color: #fff;
   }
+  &.status--refunded {
+    background: linear-gradient(135deg, #ff3b30 0%, #ff6b6b 100%);
+    color: #fff;
+  }
 }
 
 .status-card__icon {
@@ -483,6 +583,11 @@ $bg: #FFF9F3;
   box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.1);
 
   svg {
+    width: 44rpx;
+    height: 44rpx;
+  }
+
+  image {
     width: 44rpx;
     height: 44rpx;
   }
@@ -544,6 +649,16 @@ $bg: #FFF9F3;
 /* 商品列表 */
 .goods-list {
   padding: 0 24rpx 24rpx;
+}
+
+.goods-empty {
+  padding: 48rpx 24rpx;
+  text-align: center;
+
+  &__text {
+    font-size: 26rpx;
+    color: $sub;
+  }
 }
 
 .goods-item {
@@ -655,6 +770,7 @@ $bg: #FFF9F3;
   &.status--paid { color: $primary; font-weight: 600; }
   &.status--shipped { color: #34C759; font-weight: 600; }
   &.status--completed { color: $sub; }
+  &.status--refunded { color: #ff3b30; font-weight: 600; }
 }
 
 /* 价格信息 */
@@ -737,6 +853,17 @@ $bg: #FFF9F3;
       border-color: #ddd;
     }
   }
+
+  &--danger {
+    background: #fff;
+    color: #ff3b30;
+    border: 2rpx solid #ff3b30;
+
+    &:active {
+      background: rgba(255, 59, 48, 0.1);
+      border-color: #ff3b30;
+    }
+  }
 }
 
 /* 底部操作栏 */
@@ -800,6 +927,13 @@ $bg: #FFF9F3;
       box-shadow: 0 4rpx 16rpx rgba(255, 144, 0, 0.3);
     }
   }
+}
+
+/* 小程序状态符号样式 */
+.status-symbol {
+  font-size: 44rpx;
+  line-height: 1;
+  font-family: 'Segoe UI Symbol', 'Apple Color Emoji', sans-serif;
 }
 
 /* 底部安全区 */

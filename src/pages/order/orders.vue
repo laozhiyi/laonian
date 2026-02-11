@@ -37,8 +37,27 @@
       scroll-y
       @scrolltolower="loadMore"
     >
+      <!-- 骨架屏加载状态 -->
+      <view class="skeleton-orders" v-if="ordersLoading && orderList.length === 0">
+        <view class="skeleton-order-card" v-for="n in 3" :key="n">
+          <view class="skeleton-header">
+            <view class="skeleton-line long"></view>
+            <view class="skeleton-line short"></view>
+          </view>
+          <view class="skeleton-goods">
+            <view class="skeleton-goods-item" v-for="m in 2" :key="m">
+              <view class="skeleton-image"></view>
+              <view class="skeleton-text"></view>
+            </view>
+          </view>
+          <view class="skeleton-footer">
+            <view class="skeleton-line medium"></view>
+          </view>
+        </view>
+      </view>
+
       <!-- 订单列表 -->
-      <view class="order-list" v-if="orderList.length > 0">
+      <view class="order-list" v-else-if="orderList.length > 0">
         <view class="order-card" v-for="order in orderList" :key="order.id" @tap="goDetail(order.id)">
           <view class="order-card__header">
             <text class="order-card__no">订单号：{{ order.orderNo }}</text>
@@ -49,19 +68,19 @@
 
           <!-- 商品列表 -->
           <view class="order-card__goods">
-            <view class="goods-item" v-for="(item, index) in order.items.slice(0, 3)" :key="index">
+            <view class="goods-item" v-for="(item, index) in (order.items || []).slice(0, 3)" :key="index">
               <image class="goods-item__cover" :src="item.cover" mode="aspectFill" />
               <view class="goods-item__info">
                 <view class="goods-item__title">{{ item.title }}</view>
                 <view class="goods-item__spec">{{ item.spec || '默认规格' }}</view>
                 <view class="goods-item__row">
-                  <text class="goods-item__price">¥{{ item.price.toFixed(2) }}</text>
+                  <text class="goods-item__price">¥{{ (item.price || 0).toFixed(2) }}</text>
                   <text class="goods-item__quantity">x{{ item.quantity }}</text>
                 </view>
               </view>
             </view>
-            <view class="goods-more" v-if="order.items.length > 3">
-              <text>查看更多商品 ({{ order.items.length - 3 }})</text>
+            <view class="goods-more" v-if="(order.items || []).length > 3">
+              <text>查看更多商品 ({{ (order.items || []).length - 3 }})</text>
             </view>
           </view>
 
@@ -70,7 +89,7 @@
             <text class="order-card__time">{{ formatTime(order.createdAt) }}</text>
             <view class="order-card__total">
               <text>共 {{ getTotalQuantity(order) }} 件商品，合计：</text>
-              <text class="order-card__price">¥{{ order.totalPrice.toFixed(2) }}</text>
+              <text class="order-card__price">¥{{ (order.totalPrice || 0).toFixed(2) }}</text>
             </view>
           </view>
 
@@ -93,11 +112,16 @@
       <!-- 空状态 -->
       <view class="empty" v-else-if="!loading">
         <view class="empty__icon">
+          <!-- #ifdef H5 -->
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M7 18C7.55228 18 8 17.5523 8 17C8 16.4477 7.55228 16 7 16C6.44772 16 6 16.4477 6 17C6 17.5523 6.44772 18 7 18Z" stroke="currentColor" stroke-width="2"/>
             <path d="M17 18C17.5523 18 18 17.5523 18 17C18 16.4477 17.5523 16 17 16C16.4477 16 16 16.4477 16 17C16 17.5523 16.4477 18 17 18Z" stroke="currentColor" stroke-width="2"/>
             <path d="M1 1H5L7.68 14.39C7.77144 14.8504 8.02191 15.264 8.38755 15.5583C8.75318 15.8526 9.2107 16.009 9.68 16H18.4C18.8693 16.009 19.3268 15.8526 19.6925 15.5583C20.0581 15.264 20.3086 14.8504 20.4 14.39L22 6H6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
+          <!-- #endif -->
+          <!-- #ifdef MP-WEIXIN -->
+          <image src="/static/icons/cart.png" mode="aspectFit" />
+          <!-- #endif -->
         </view>
         <text class="empty__text">暂无订单</text>
         <text class="empty__tip">快去商城逛逛吧</text>
@@ -114,6 +138,16 @@ import { ref, computed, onMounted } from 'vue'
 import { getOrders, confirmOrder, refundOrder } from '@/utils/order.js'
 import { deleteOrder as deleteOrderApi } from '@/utils/order.js'
 import { ORDER_STATUS_TEXT } from '@/utils/order.js'
+import { getWithCache, removeCache } from '@/utils/cache.js'
+
+// 清除订单缓存
+const clearOrdersCache = () => {
+  removeCache('orders_list_all')
+  removeCache('orders_list_pending')
+  removeCache('orders_list_shipped')
+  removeCache('orders_list_completed')
+  removeCache('orders_list_refunded')
+}
 
 // ========== 状态栏高度 ==========
 const statusBarHeight = ref(0)
@@ -127,6 +161,7 @@ const page = ref(1)
 const pageSize = ref(10)
 const loading = ref(false)
 const hasMore = ref(true)
+const ordersLoading = ref(false)
 
 // ========== 滚动区域样式 ==========
 const scrollStyle = computed(() => ({
@@ -135,33 +170,54 @@ const scrollStyle = computed(() => ({
 }))
 
 // ========== 获取订单列表 ==========
+const getOrdersList = async () => {
+  const cacheKey = `orders_list_${currentTab.value}`
+  const res = await getOrders({ status: currentTab.value !== 'all' ? currentTab.value : undefined })
+  return res
+}
+
 const loadOrders = async (refresh = false) => {
   if (refresh) {
+    // 清除缓存，强制刷新
+    removeCache(`orders_list_${currentTab.value}`)
     page.value = 1
     hasMore.value = true
     orderList.value = []
   }
 
-  if (!hasMore.value) return
+  if (!hasMore.value && !refresh) return
 
-  loading.value = true
-  const params = {
-    page: page.value,
-    size: pageSize.value,
-  }
-  if (currentTab.value !== 'all') {
-    params.status = currentTab.value
-  }
+  ordersLoading.value = true
+  try {
+    const res = await getWithCache(
+      `orders_list_${currentTab.value}`,
+      getOrdersList,
+      1 * 60 * 1000 // 缓存1分钟
+    )
 
-  const res = await getOrders(params)
-  loading.value = false
+    if (res && res.list) {
+      // 过滤掉已删除的订单
+      const validOrders = (res.list || []).filter(order => !order.deleted)
 
-  if (res.ok) {
-    if (res.list.length < pageSize.value) {
+      if (refresh) {
+        orderList.value = validOrders
+      } else {
+        orderList.value = [...orderList.value, ...validOrders]
+      }
+
+      if (validOrders.length < pageSize.value) {
+        hasMore.value = false
+      } else {
+        page.value++
+      }
+    } else {
       hasMore.value = false
     }
-    orderList.value = [...orderList.value, ...res.list]
-    page.value++
+  } catch (e) {
+    console.error('加载订单失败:', e)
+    hasMore.value = false
+  } finally {
+    ordersLoading.value = false
   }
 }
 
@@ -228,6 +284,7 @@ const confirmReceive = (order) => {
         const result = await confirmOrder(order.id)
         if (result.ok) {
           uni.showToast({ title: '确认收货成功', icon: 'success' })
+          clearOrdersCache()
           loadOrders(true)
         } else {
           uni.showToast({ title: result.message || '确认失败', icon: 'none' })
@@ -246,6 +303,7 @@ const refund = (order) => {
         const result = await refundOrder(order.id)
         if (result.ok) {
           uni.showToast({ title: '退货成功', icon: 'success' })
+          clearOrdersCache()
           loadOrders(true)
         } else {
           uni.showToast({ title: result.message || '退货失败', icon: 'none' })
@@ -264,6 +322,7 @@ const deleteOrderItem = (order) => {
         const result = await deleteOrderApi(order.id)
         if (result.ok) {
           uni.showToast({ title: '删除成功', icon: 'success' })
+          clearOrdersCache()
           loadOrders(true)
         } else {
           uni.showToast({ title: result.message || '删除失败', icon: 'none' })
@@ -443,6 +502,75 @@ $bg: #FFF9F3;
 /* 滚动区域 */
 .scroll {
   width: 100%;
+}
+
+/* 骨架屏 */
+.skeleton-orders {
+  padding: 24rpx 28rpx;
+}
+
+.skeleton-order-card {
+  background: #fff;
+  border-radius: 28rpx;
+  margin-bottom: 28rpx;
+  overflow: hidden;
+  padding: 24rpx;
+}
+
+.skeleton-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20rpx;
+}
+
+.skeleton-line {
+  height: 28rpx;
+  border-radius: 8rpx;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+
+  &.long { width: 60%; }
+  &.short { width: 30%; }
+  &.medium { width: 40%; }
+}
+
+.skeleton-goods {
+  display: flex;
+  gap: 20rpx;
+  margin-bottom: 20rpx;
+}
+
+.skeleton-goods-item {
+  flex: 1;
+}
+
+.skeleton-image {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 16rpx;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.skeleton-text {
+  height: 24rpx;
+  margin-top: 12rpx;
+  border-radius: 8rpx;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.skeleton-footer {
+  padding-top: 16rpx;
+  border-top: 1rpx solid #f5f5f5;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
 /* 订单列表 */

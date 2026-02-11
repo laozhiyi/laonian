@@ -113,8 +113,9 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { getCurrentUser, logout } from '@/utils/user.js'
+import { onShow } from '@dcloudio/uni-app'
 
 // ========== 状态栏高度 ==========
 const statusBarHeight = ref(0)
@@ -128,13 +129,23 @@ const scrollStyle = computed(() => ({
 }))
 
 // ========== 用户信息（响应式） ==========
-const userInfo = computed(() => getCurrentUser())
+const userInfo = ref(null)
 
 // ========== 是否已登录 ==========
 const isLoggedIn = computed(() => !!userInfo.value)
 
 // ========== 是否是管理员 ==========
 const isAdmin = computed(() => userInfo.value?.role === 'admin')
+
+// ========== 刷新用户信息 ==========
+const refreshUserInfo = () => {
+  userInfo.value = getCurrentUser()
+}
+
+// ========== onShow 时刷新用户信息 ==========
+onShow(() => {
+  refreshUserInfo()
+})
 
 // ========== 菜单列表 ==========
 const menuList = ref([
@@ -211,10 +222,10 @@ const onContactTap = () => {
 }
 
 // ========== 生命周期 ==========
-import { onMounted } from 'vue'
 onMounted(() => {
   const sys = uni.getSystemInfoSync()
   statusBarHeight.value = sys.statusBarHeight || 0
+  refreshUserInfo()
 })
 </script>
 

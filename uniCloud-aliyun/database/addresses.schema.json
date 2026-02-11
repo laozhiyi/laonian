@@ -1,0 +1,20 @@
+{
+	"bsonType": "object",
+	"required": ["userId", "name", "phone"],
+	"permission": {
+		"read": true,
+		"create": true,
+		"update": true,
+		"delete": true
+	},
+	"properties": {
+		"_id": { "description": "ID" },
+		"userId": { "bsonType": "string" },
+		"name": { "bsonType": "string" },
+		"phone": { "bsonType": "string" },
+		"detail": { "bsonType": "string" },
+		"isDefault": { "bsonType": "bool" },
+		"createdAt": { "bsonType": "timestamp" },
+		"updatedAt": { "bsonType": "timestamp" }
+	}
+}

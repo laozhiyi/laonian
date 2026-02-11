@@ -49,12 +49,14 @@
 		{
 			"path": "pages/address/form",
 			"style": {
+				"navigationStyle": "custom",
 				"navigationBarTitleText": "编辑地址"
 			}
 		},
 		{
 			"path": "pages/checkout/checkout",
 			"style": {
+				"navigationStyle": "custom",
 				"navigationBarTitleText": "确认订单"
 			}
 		},

@@ -1,53 +1,73 @@
 /**
- * 用户管理模块
- *
- * 对接后端 API：
- * - POST /auth/register - 注册
- * - POST /auth/login - 登录
- * - POST /auth/logout - 登出
- * - GET /user/profile - 获取用户信息
+ * 用户模块 API（uniCloud 云数据库版）
  */
 
-import { ref } from 'vue'
-import { get, post, put } from './request.js'
-import { getToken, setToken, removeToken } from './request.js'
+import { dbAdd, dbWhere, dbUpdate, dbGet } from './cloud-db.js'
 
-// 响应式当前用户状态
-const currentUser = ref(null)
+// 常量
+const USERS_COLLECTION = 'users'
 
-// 初始化
-function init() {
-  const token = getToken()
-  if (token) {
-    // 有token时获取用户信息
-    getUserProfile().catch(() => {
-      // 获取失败说明token无效，清除
-      removeToken()
-      currentUser.value = null
-    })
+// 获取当前用户信息（从本地存储）
+export function getCurrentUser() {
+  try {
+    const user = uni.getStorageSync('current_user')
+    return user ? JSON.parse(user) : null
+  } catch {
+    return null
   }
 }
-init()
+
+// 保存当前用户到本地
+function saveCurrentUser(user) {
+  uni.setStorageSync('current_user', JSON.stringify(user))
+}
+
+// 清除当前用户
+function clearCurrentUser() {
+  uni.removeStorageSync('current_user')
+  uni.removeStorageSync('demo_token')
+}
 
 /**
  * 用户注册
  */
 export async function registerUser({ username, password, role = 'user' }) {
   try {
-    const res = await post('/auth/register', { username, password, role })
-    if (res.code === 200) {
-      // 保存token和用户信息
-      setToken(res.data.token)
-      currentUser.value = {
-        id: res.data.id,
-        username: res.data.username,
-        role: res.data.role,
-      }
-      return { ok: true, user: currentUser.value }
+    // 检查用户名是否已存在
+    const checkRes = await dbWhere(USERS_COLLECTION, {
+      username: username.trim().toLowerCase()
+    })
+
+    if (checkRes.result.data && checkRes.result.data.length > 0) {
+      return { ok: false, message: '用户名已存在' }
     }
-    return { ok: false, message: res.message }
-  } catch (err) {
-    return { ok: false, message: err.message || '注册失败' }
+
+    const now = Date.now()
+    const userData = {
+      username: username.trim().toLowerCase(),
+      password: password.trim(),
+      role: role,
+      createdAt: now,
+      updatedAt: now
+    }
+
+    const addRes = await dbAdd(USERS_COLLECTION, userData)
+
+    if (addRes.result.id) {
+      const user = {
+        id: addRes.result.id,
+        username: userData.username,
+        role: userData.role
+      }
+      saveCurrentUser(user)
+      uni.setStorageSync('demo_token', 'local_' + userData.username + '_' + now)
+      return { ok: true, user }
+    }
+
+    return { ok: false, message: '注册失败' }
+  } catch (error) {
+    console.error('注册失败:', error)
+    return { ok: false, message: error.message || '注册失败' }
   }
 }
 
@@ -56,23 +76,62 @@ export async function registerUser({ username, password, role = 'user' }) {
  */
 export async function loginUser({ username, password }) {
   try {
-    const res = await post('/auth/login', { username, password })
-    if (res.code === 200) {
-      // 保存token和用户信息
-      console.log('📝 Login success, token:', res.data.token?.substring(0, 20) + '...')
-      setToken(res.data.token)
-      console.log('📝 Token saved, checking storage:', getToken()?.substring(0, 20) + '...')
-      currentUser.value = {
-        id: res.data.id,
-        username: res.data.username,
-        avatar: res.data.avatar || '',
-        role: res.data.role,
+    const name = username.trim().toLowerCase()
+    const pwd = password.trim()
+
+    // 默认管理员账号
+    if (name === 'admin' && pwd === 'admin') {
+      // 检查管理员是否存在，不存在则创建
+      const checkRes = await dbWhere(USERS_COLLECTION, { username: 'admin' })
+      let adminId
+
+      if (!checkRes.result.data || checkRes.result.data.length === 0) {
+        const now = Date.now()
+        const adminData = {
+          username: 'admin',
+          password: 'admin',
+          role: 'admin',
+          createdAt: now,
+          updatedAt: now
+        }
+        const addRes = await dbAdd(USERS_COLLECTION, adminData)
+        adminId = addRes.result.id
+      } else {
+        adminId = checkRes.result.data[0]._id
       }
-      return { ok: true, user: currentUser.value }
+
+      const user = {
+        id: adminId,
+        username: 'admin',
+        role: 'admin'
+      }
+      saveCurrentUser(user)
+      uni.setStorageSync('demo_token', 'local_admin_' + Date.now())
+      return { ok: true, user }
     }
-    return { ok: false, message: res.message }
-  } catch (err) {
-    return { ok: false, message: err.message || '登录失败' }
+
+    // 普通用户登录
+    const loginRes = await dbWhere(USERS_COLLECTION, {
+      username: name,
+      password: pwd
+    })
+
+    if (loginRes.result.data && loginRes.result.data.length > 0) {
+      const userData = loginRes.result.data[0]
+      const user = {
+        id: userData._id,
+        username: userData.username,
+        role: userData.role
+      }
+      saveCurrentUser(user)
+      uni.setStorageSync('demo_token', 'local_' + name + '_' + Date.now())
+      return { ok: true, user }
+    }
+
+    return { ok: false, message: '用户名或密码错误' }
+  } catch (error) {
+    console.error('登录失败:', error)
+    return { ok: false, message: error.message || '登录失败' }
   }
 }
 
@@ -80,65 +139,59 @@ export async function loginUser({ username, password }) {
  * 用户登出
  */
 export async function logout() {
+  clearCurrentUser()
+  return { ok: true, message: '登出成功' }
+}
+
+/**
+ * 获取用户信息
+ */
+export async function getUserInfo(userId) {
   try {
-    await post('/auth/logout')
-  } catch (err) {
-    // 登出接口失败不影响本地登出
-  }
-  removeToken()
-  currentUser.value = null
-}
-
-/**
- * 获取当前用户信息
- */
-export async function getUserProfile() {
-  const res = await get('/user/profile')
-  if (res.code === 200) {
-    currentUser.value = {
-      id: res.data.id,
-      username: res.data.username,
-      avatar: res.data.avatar || '',
-      role: res.data.role,
-      createdAt: res.data.createdAt,
+    const res = await dbGet(USERS_COLLECTION, userId)
+    if (res.result.data) {
+      return { ok: true, data: res.result.data }
     }
-    return currentUser.value
+    return { ok: false, message: '用户不存在' }
+  } catch (error) {
+    return { ok: false, message: error.message }
   }
-  throw new Error(res.message || '获取用户信息失败')
 }
 
 /**
- * 修改用户信息
+ * 更新用户信息
  */
-export async function updateUserProfile({ avatar }) {
-  const res = await put('/user/profile', { avatar })
-  if (res.code === 200) {
-    currentUser.value = {
-      ...currentUser.value,
-      avatar: res.data.avatar,
-    }
-    return { ok: true }
+export async function updateUserInfo(userId, data) {
+  try {
+    await dbUpdate(USERS_COLLECTION, userId, {
+      ...data,
+      updatedAt: Date.now()
+    })
+    return { ok: true, message: '更新成功' }
+  } catch (error) {
+    return { ok: false, message: error.message }
   }
-  return { ok: false, message: res.message }
 }
 
 /**
- * 获取当前用户
- */
-export function getCurrentUser() {
-  return currentUser.value
-}
-
-/**
- * 是否已登录
+ * 检查是否已登录
  */
 export function isLoggedIn() {
-  return !!getToken() && !!currentUser.value
+  return !!uni.getStorageSync('demo_token') && !!getCurrentUser()
 }
 
 /**
  * 是否是管理员
  */
 export function isAdmin() {
-  return currentUser.value?.role === 'admin'
+  const user = getCurrentUser()
+  return user && user.role === 'admin'
+}
+
+/**
+ * 获取当前用户ID
+ */
+export function getCurrentUserId() {
+  const user = getCurrentUser()
+  return user ? user.id : null
 }

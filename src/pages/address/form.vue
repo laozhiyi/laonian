@@ -1,79 +1,95 @@
 <template>
   <view class="page">
-    <!-- 顶部导航 -->
-    <view class="header" :style="{ paddingTop: statusBarHeight + 'px' }">
-      <view class="header__back" @tap="goBack">‹</view>
-      <text class="header__title">{{ isEdit ? '编辑地址' : '添加地址' }}</text>
-      <view class="header__save" @tap="handleSave">保存</view>
+    <!-- 毛玻璃导航 -->
+    <view class="glass-nav" :style="{ paddingTop: statusBarHeight + 'px', height: (statusBarHeight + navHeight) + 'px' }">
+      <view class="glass-nav__back" @tap="goBack">
+        <text class="back-icon">‹</text>
+      </view>
+      <view class="glass-nav__title">
+        <text class="brand-name">{{ isEdit ? '编辑地址' : '添加地址' }}</text>
+      </view>
+      <view class="glass-nav__placeholder" />
     </view>
 
     <!-- 表单 -->
-    <view class="form">
-      <view class="form__item">
-        <view class="form__label">收货人</view>
-        <input
-          class="form__input"
-          v-model="form.name"
-          placeholder="请输入收货人姓名"
-          placeholder-class="form__placeholder"
-        />
-      </view>
+    <scroll-view class="scroll" :style="scrollStyle" scroll-y>
+      <view class="form">
+        <view class="form__item">
+          <view class="form__label">收货人</view>
+          <input
+            class="form__input"
+            v-model="form.name"
+            placeholder="请输入收货人姓名"
+            placeholder-class="form__placeholder"
+          />
+        </view>
 
-      <view class="form__item">
-        <view class="form__label">手机号码</view>
-        <input
-          class="form__input"
-          v-model="form.phone"
-          type="number"
-          placeholder="请输入手机号码"
-          placeholder-class="form__placeholder"
-          maxlength="11"
-        />
-      </view>
+        <view class="form__item">
+          <view class="form__label">手机号码</view>
+          <input
+            class="form__input"
+            v-model="form.phone"
+            type="number"
+            placeholder="请输入手机号码"
+            placeholder-class="form__placeholder"
+            maxlength="11"
+          />
+        </view>
 
-      <view class="form__item">
-        <view class="form__label">详细地址</view>
-        <textarea
-          class="form__textarea"
-          v-model="form.detail"
-          placeholder="请输入详细地址"
-          placeholder-class="form__placeholder"
-          :maxlength="200"
-        />
-      </view>
+        <view class="form__item">
+          <view class="form__label">详细地址</view>
+          <textarea
+            class="form__textarea"
+            v-model="form.detail"
+            placeholder="请输入详细地址"
+            placeholder-class="form__placeholder"
+            :maxlength="200"
+          />
+        </view>
 
-      <view class="form__item form__item--switch">
-        <view class="form__label">设为默认地址</view>
-        <view
-          class="form__switch"
-          :class="{ 'form__switch--active': form.isDefault }"
-          @tap="form.isDefault = !form.isDefault"
-        >
-          <view class="form__switch-circle" />
+        <view class="form__item form__item--switch">
+          <view class="form__label">设为默认地址</view>
+          <view
+            class="form__switch"
+            :class="{ 'form__switch--active': form.isDefault }"
+            @tap="form.isDefault = !form.isDefault"
+          >
+            <view class="form__switch-circle" />
+          </view>
         </view>
       </view>
-    </view>
 
-    <!-- 删除按钮（编辑时显示） -->
-    <view class="delete-btn" v-if="isEdit" @tap="handleDelete">
-      <text>删除地址</text>
-    </view>
-
-    <!-- 底部保存按钮 -->
-    <view class="save-bar">
-      <view class="save-btn" @tap="handleSave">
-        <text>保存地址</text>
+      <!-- 删除按钮（编辑时显示） -->
+      <view class="delete-btn" v-if="isEdit" @tap="handleDelete">
+        <text>删除地址</text>
       </view>
-    </view>
+
+      <!-- 底部保存按钮 -->
+      <view class="save-bar">
+        <view class="save-btn" @tap="handleSave">
+          <text>保存地址</text>
+        </view>
+      </view>
+
+      <!-- 底部安全区 -->
+      <view class="bottom-safe" />
+    </scroll-view>
   </view>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { createAddress, updateAddress, deleteAddress, getAddresses } from '@/utils/address.js'
 
 // ========== 状态栏高度 ==========
 const statusBarHeight = ref(0)
+const navHeight = ref(88)
+
+// ========== 滚动区域样式 ==========
+const scrollStyle = computed(() => ({
+  paddingTop: (statusBarHeight.value + navHeight.value) + 'px',
+  height: 'calc(100vh - ' + (statusBarHeight.value + navHeight.value) + 'px)',
+}))
 
 // ========== 表单数据 ==========
 const form = ref({
@@ -120,6 +136,8 @@ const handleSave = async () => {
     } else {
       await createAddress(data)
     }
+    // 通知地址列表页面刷新
+    uni.$emit('addressChanged')
     uni.showToast({ title: '保存成功', icon: 'success' })
     setTimeout(() => {
       uni.navigateBack()
@@ -136,6 +154,8 @@ const handleDelete = () => {
     success: async (res) => {
       if (res.confirm) {
         await deleteAddress(addressId.value)
+        // 通知地址列表页面刷新
+        uni.$emit('addressChanged')
         uni.showToast({ title: '已删除', icon: 'none' })
         setTimeout(() => {
           uni.navigateBack()
@@ -187,46 +207,70 @@ $bg: #FFF9F3;
   background: $bg;
 }
 
-/* 顶部导航 */
-.header {
+/* 毛玻璃导航 */
+.glass-nav {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  height: 88rpx;
-  background: linear-gradient(135deg, $primary, #FFB347);
+  height: auto;
+  min-height: 88rpx;
+  background: rgba(255, 255, 255, 0.80);
+  backdrop-filter: blur(30rpx);
+  -webkit-backdrop-filter: blur(30rpx);
+  border-bottom: 1rpx solid rgba(255, 255, 255, 0.3);
+  z-index: 999;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: 0 24rpx;
-  z-index: 100;
+  box-sizing: border-box;
 }
 
-.header__back {
-  font-size: 48rpx;
-  color: #fff;
+.glass-nav__back {
+  width: 72rpx;
+  height: 72rpx;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.back-icon {
+  font-size: 56rpx;
+  color: $text;
   padding: 0 8rpx;
+  transition: transform 0.2s ease;
+
+  &:active {
+    transform: scale(0.9);
+  }
 }
 
-.header__title {
-  flex: 1;
-  text-align: center;
-  font-size: 32rpx;
-  font-weight: 600;
-  color: #fff;
-  margin-right: 48rpx;
+.glass-nav__title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
-.header__save {
-  font-size: 28rpx;
-  color: #fff;
-  font-weight: 500;
+.glass-nav__placeholder {
+  width: 72rpx;
+}
+
+.brand-name {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: $text;
+  letter-spacing: 2rpx;
+}
+
+/* 滚动区域 */
+.scroll {
+  width: 100%;
 }
 
 /* 表单 */
 .form {
   padding: 24rpx;
-  padding-top: 112rpx;
-  padding-bottom: 140rpx;
 }
 
 .form__item {
@@ -307,6 +351,11 @@ $bg: #FFF9F3;
   font-size: 30rpx;
   color: #ff3b30;
   box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+
+  &:active {
+    background: rgba(255, 59, 48, 0.05);
+  }
 }
 
 /* 底部保存栏 */
@@ -331,5 +380,16 @@ $bg: #FFF9F3;
   font-size: 32rpx;
   font-weight: 600;
   color: #fff;
+  transition: all 0.3s ease;
+
+  &:active {
+    transform: scale(0.98);
+    box-shadow: 0 4rpx 16rpx rgba(255, 144, 0, 0.3);
+  }
+}
+
+/* 底部安全区 */
+.bottom-safe {
+  height: calc(120rpx + env(safe-area-inset-bottom));
 }
 </style>

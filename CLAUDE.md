@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - Install deps: `npm install`
 - Dev (auto-select platform): `npm run dev:custom` (runs `uni -p`, prompts/uses target platform)
-- Dev H5: `npm run dev:h5`
+- Dev H5: `npm run dev:h5` (dev server at http://localhost:3000)
 - Dev H5 SSR: `npm run dev:h5:ssr`
 - Dev mini-programs (examples):
   - Weixin: `npm run dev:mp-weixin`
@@ -23,30 +23,38 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Notes:
 - Scripts are thin wrappers around the `uni` CLI.
 - There are no explicit lint/test scripts configured in `package.json`.
+- H5 router mode is configured as `hash` in `pages.json`.
 
 ## Architecture overview
 
-This is a UniApp + Vue 3 project scaffolded to build via Vite.
+This is a UniApp + Vue 3 e-commerce application ("橘上生香") built with Vite.
 
-- Vite entry/config:
-  - `vite.config.js` registers `@dcloudio/vite-plugin-uni`.
-  - `index.html` loads the app entry at `/src/main.js`.
+- **App entry**: `src/main.js` exports `createApp()` using `createSSRApp(App)` pattern.
+- **Top-level component**: `src/App.vue` defines UniApp lifecycle hooks (`onLaunch`, `onShow`, `onHide`).
+- **Pages**: Defined in `src/pages.json` with custom navigation styling on most pages.
 
-- App bootstrap:
-  - `src/main.js` exports `createApp()` and uses `createSSRApp(App)` (UniApp/Vue 3 pattern).
-  - `src/App.vue` is the top-level application component and defines UniApp lifecycle hooks (`onLaunch`, `onShow`, `onHide`).
+**Page structure**:
+- TabBar pages: `index/index`, `mall/mall`, `me/me`
+- Auth: `auth/login`
+- Product: `product/detail`, `admin/admin` (management)
+- Order: `order/orders`, `order/detail`
+- Checkout: `checkout/checkout`
+- Address: `address/address`, `address/form`
 
-- Routing / pages:
-  - `src/pages.json` defines the app pages and global navigation styling.
-  - Example page: `src/pages/index/index.vue`.
+**Data layer** (`src/utils/`):
+- `request.js`: Token management and mock API layer using localStorage
+- Domain modules: `user.js`, `product.js`, `cart.js`, `order.js`, `address.js`
 
-- Platform manifests:
-  - `src/manifest.json` holds platform-specific configuration for App-plus and mini-program builds.
+**Custom components**: `src/components/`
 
-- Styles / assets:
-  - Global styles live in `src/uni.scss`.
-  - Static assets are under `src/static/`.
+**Key dependencies**:
+- Vue 3 with Composition API
+- Vue-i18n for internationalization
+- Sass for styling
 
-## Notable files
+**Configuration files**:
+- `vite.config.js`: Vite config with `@dcloudio/vite-plugin-uni`, dev server on port 3000
+- `src/manifest.json`: Platform-specific settings for App-plus and mini-programs
+- `src/uni.scss`: Global styles
 
-- `template.html`: a standalone static HTML template (includes external CDN assets). It is not referenced by the Vite/UniApp entry by default; treat it as separate from the UniApp runtime unless you wire it in explicitly.
+**Static assets**: `src/static/` (includes tab bar icons)

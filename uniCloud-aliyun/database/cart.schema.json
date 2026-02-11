@@ -1,0 +1,21 @@
+{
+	"bsonType": "object",
+	"required": ["userId", "productId"],
+	"permission": {
+		"read": true,
+		"create": true,
+		"update": true,
+		"delete": true
+	},
+	"properties": {
+		"_id": { "description": "ID" },
+		"userId": { "bsonType": "string" },
+		"productId": { "bsonType": "string" },
+		"title": { "bsonType": "string" },
+		"cover": { "bsonType": "string" },
+		"price": { "bsonType": "number" },
+		"quantity": { "bsonType": "int" },
+		"createdAt": { "bsonType": "timestamp" },
+		"updatedAt": { "bsonType": "timestamp" }
+	}
+}
