@@ -1,16 +1,10 @@
 # 🍊 橘上生香 - 柑橘农特产品商城小程序
 
-<div align="center">
-
-![Logo Placeholder](https://via.placeholder.com/150x150/FF9000/FFFFFF?text=🍊)
-
 基于 UniApp + Vue 3 + uniCloud 开发的柑橘农特产品电商小程序
 
 [![UniApp](https://img.shields.io/badge/UniApp-3.0-blue?style=flat-square)](https://uniapp.dcloud.io/)
 [![Vue 3](https://img.shields.io/badge/Vue-3.4-green?style=flat-square)](https://vuejs.org/)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
-
-</div>
 
 ---
 
@@ -58,12 +52,6 @@ uni-preset-vue-vite/
 │   │   └── checkout/     # 结算页面
 │   ├── components/       # 公共组件
 │   ├── utils/            # 工具函数
-│   │   ├── request.js    # 网络请求封装
-│   │   ├── user.js       # 用户相关
-│   │   ├── product.js    # 商品相关
-│   │   ├── cart.js       # 购物车相关
-│   │   ├── order.js      # 订单相关
-│   │   └── address.js    # 地址相关
 │   ├── static/           # 静态资源
 │   ├── App.vue           # 应用入口
 │   ├── main.js           # JS 入口
@@ -132,20 +120,6 @@ npm run build:mp-weixin
 3. 上传 schema 和 cloudfunctions
 4. 配置 manifest.json 中的 spaceId 和 clientSecret
 
-## 📷 截图预览
-
-<div align="center">
-
-| 首页 | 商城 | 商品详情 |
-|:---:|:---:|:---:|
-| ![Home](https://via.placeholder.com/200x400/FFFAF5/FF9000?text=首页) | ![Mall](https://via.placeholder.com/200x400/FFFAF5/FF9000?text=商城) | ![Detail](https://via.placeholder.com/200x400/FFFAF5/FF9000?text=商品详情) |
-
-| 购物车 | 订单 | 个人中心 |
-|:---:|:---:|:---:|
-| ![Cart](https://via.placeholder.com/200x400/FFFAF5/FF9000?text=购物车) | ![Order](https://via.placeholder.com/200x400/FFFAF5/FF9000?text=订单) | ![Profile](https://via.placeholder.com/200x400/FFFAF5/FF9000?text=个人中心) |
-
-</div>
-
 ## 📝 更新日志
 
 ### v1.0.0 (2025-02)
@@ -160,16 +134,8 @@ npm run build:mp-weixin
 
 本项目仅用于学习演示，欢迎提出建议和反馈。
 
-## 📄 许可证
-
-MIT License - 详见 [LICENSE](LICENSE)
-
 ---
-
-<div align="center">
 
 **橘上生香 · Orange Fragrance**
 
 从果园到餐桌的美味旅程
-
-</div>
