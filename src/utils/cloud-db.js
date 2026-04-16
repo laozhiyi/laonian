@@ -6,15 +6,37 @@
  * 获取数据库实例
  */
 export function getDB() {
-  return uniCloud.database()
+  if (typeof uniCloud === 'undefined' || !uniCloud) {
+    return null
+  }
+  try {
+    const db = uniCloud.database()
+    return db
+  } catch {
+    return null
+  }
+}
+
+// 检查 uniCloud 是否可用
+export function isUniCloudAvailable() {
+  if (typeof uniCloud === 'undefined' || !uniCloud) return false
+  try {
+    const db = uniCloud.database()
+    return !!db
+  } catch {
+    return false
+  }
 }
 
 /**
  * 查询单条记录
  */
 export async function dbGet(collection, id) {
+  const db = getDB()
+  if (!db) {
+    return { result: { data: null } }
+  }
   try {
-    const db = getDB()
     // 确保ID是字符串
     const docId = String(id)
     const res = await db.collection(collection).doc(docId).get()
@@ -36,6 +58,9 @@ export async function dbGet(collection, id) {
  */
 export async function dbAdd(collection, data) {
   const db = getDB()
+  if (!db) {
+    return { result: { id: null, error: 'uniCloud not available' } }
+  }
   return db.collection(collection).add(data)
 }
 
@@ -44,6 +69,9 @@ export async function dbAdd(collection, data) {
  */
 export async function dbUpdate(collection, id, data) {
   const db = getDB()
+  if (!db) {
+    return { result: null, error: 'uniCloud not available' }
+  }
   // 确保ID是字符串
   const docId = String(id)
   return db.collection(collection).doc(docId).update(data)
@@ -54,6 +82,9 @@ export async function dbUpdate(collection, id, data) {
  */
 export async function dbRemove(collection, id) {
   const db = getDB()
+  if (!db) {
+    return { result: null, error: 'uniCloud not available' }
+  }
   // 确保ID是字符串
   const docId = String(id)
   return db.collection(collection).doc(docId).remove()
@@ -63,8 +94,11 @@ export async function dbRemove(collection, id) {
  * 条件查询
  */
 export async function dbWhere(collection, condition, options = {}) {
+  const db = getDB()
+  if (!db) {
+    return { result: { data: [] } }
+  }
   try {
-    const db = getDB()
     let query = db.collection(collection).where(condition)
 
     if (options.orderBy) {

@@ -1,18 +1,32 @@
 {
 	"bsonType": "object",
-	"required": ["username", "password", "role"],
+	"required": ["openid"],
 	"permission": {
-		"read": true,
+		"read": "doc._id == auth.uid || auth.role == 'admin'",
 		"create": true,
-		"update": true,
-		"delete": false
+		"update": "doc._id == auth.uid || auth.role == 'admin'",
+		"delete": "auth.role == 'admin'"
 	},
 	"properties": {
-		"_id": { "description": "ID" },
-		"username": { "bsonType": "string" },
-		"password": { "bsonType": "string" },
-		"role": { "bsonType": "string" },
-		"createdAt": { "bsonType": "timestamp" },
-		"updatedAt": { "bsonType": "timestamp" }
+		"_id": { "description": "用户ID" },
+		"openid": { "bsonType": "string", "description": "微信OpenID" },
+		"nickname": { "bsonType": "string", "description": "昵称" },
+		"avatar": { "bsonType": "string", "description": "头像URL" },
+		"role": { "bsonType": "string", "description": "角色 user/admin" },
+		"fontSize": { "bsonType": "string", "description": "字体大小 normal/large/extra" },
+		"interestTags": {
+			"bsonType": "array",
+			"description": "兴趣标签",
+			"itemType": "string"
+		},
+		"interestWeights": {
+			"bsonType": "object",
+			"description": "兴趣权重",
+			"properties": {}
+		},
+		"totalCommission": { "bsonType": "number", "description": "累计佣金（分）" },
+		"withdrawableCommission": { "bsonType": "number", "description": "可提现佣金（分）" },
+		"createdAt": { "bsonType": "timestamp", "description": "注册时间" },
+		"lastActiveAt": { "bsonType": "timestamp", "description": "最后活跃时间" }
 	}
 }

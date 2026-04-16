@@ -1,25 +1,26 @@
 {
 	"bsonType": "object",
-	"required": ["userId", "totalPrice", "status"],
+	"required": ["courseId", "orderAmount"],
 	"permission": {
-		"read": true,
-		"create": true,
-		"update": true,
-		"delete": true
+		"read": "doc.userId == auth.uid || auth.role == 'admin'",
+		"create": "auth.role == 'admin'",
+		"update": "auth.role == 'admin'",
+		"delete": "auth.role == 'admin'"
 	},
 	"properties": {
-		"_id": { "description": "ID" },
-		"orderNo": { "bsonType": "string" },
-		"userId": { "bsonType": "string" },
-		"items": { "bsonType": "array" },
-		"address": { "bsonType": "object" },
-		"totalPrice": { "bsonType": "number" },
-		"remark": { "bsonType": "string" },
-		"status": { "bsonType": "string" },
-		"deleted": { "bsonType": "bool" },
-		"createdAt": { "bsonType": "timestamp" },
-		"updatedAt": { "bsonType": "timestamp" },
-		"completedAt": { "bsonType": "timestamp" },
-		"refundedAt": { "bsonType": "timestamp" }
+		"_id": { "description": "订单ID" },
+		"orderNo": { "bsonType": "string", "description": "第三方订单号" },
+		"courseId": { "bsonType": "string", "description": "课程ID" },
+		"courseTitle": { "bsonType": "string", "description": "课程标题" },
+		"userId": { "bsonType": "string", "description": "用户ID" },
+		"promoteCode": { "bsonType": "string", "description": "推广码" },
+		"platform": { "bsonType": "string", "description": "来源平台" },
+		"orderAmount": { "bsonType": "number", "description": "订单金额（分）" },
+		"commission": { "bsonType": "number", "description": "佣金金额（分）" },
+		"commissionRate": { "bsonType": "number", "description": "佣金比例" },
+		"status": { "bsonType": "string", "description": "状态 pending/confirmed/settled" },
+		"createdAt": { "bsonType": "timestamp", "description": "下单时间" },
+		"confirmedAt": { "bsonType": "timestamp", "description": "确认时间" },
+		"settledAt": { "bsonType": "timestamp", "description": "结算时间" }
 	}
 }

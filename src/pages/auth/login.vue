@@ -1,335 +1,442 @@
 <template>
   <view class="page">
-    <view class="card">
-      <view class="card__title">橘上生香</view>
-      <view class="card__tabs">
-        <view
-          class="card__tab"
-          :class="{ 'is-active': mode === 'login' }"
-          @tap="mode = 'login'"
-        >
-          登录
-        </view>
-        <view
-          class="card__tab"
-          :class="{ 'is-active': mode === 'register' }"
-          @tap="mode = 'register'"
-        >
-          注册
-        </view>
-      </view>
+    <!-- 背景 -->
+    <view class="page-bg">
+      <view class="bg-gradient"></view>
+    </view>
 
-      <view class="form">
-        <view class="form__item">
-          <text class="form__label">用户名</text>
+    <!-- Logo 区域 -->
+    <view class="logo-section">
+      <view class="logo-icon">📚</view>
+      <text class="logo-title">什么值得学</text>
+      <text class="logo-slogan">终身学习，值得投资</text>
+    </view>
+
+    <!-- 登录表单 -->
+    <view class="login-section">
+      <view class="login-form">
+        <!-- 用户名输入 -->
+        <view class="form-item">
+          <view class="form-item__icon">👤</view>
           <input
-            class="form__input"
+            class="form-item__input"
+            type="text"
             v-model="username"
             placeholder="请输入用户名"
+            placeholder-class="input-placeholder"
+            confirm-type="next"
           />
         </view>
 
-        <view class="form__item">
-          <text class="form__label">密码</text>
+        <!-- 密码输入 -->
+        <view class="form-item">
+          <view class="form-item__icon">🔒</view>
           <input
-            class="form__input"
+            class="form-item__input"
+            :type="showPassword ? 'text' : 'password'"
             v-model="password"
-            password
             placeholder="请输入密码"
+            placeholder-class="input-placeholder"
+            confirm-type="done"
+            @confirm="handleLogin"
           />
+          <view class="form-item__eye" @tap="togglePassword">
+            {{ showPassword ? '👁️' : '👁️‍🗨️' }}
+          </view>
         </view>
 
-        <button class="btn btn--primary" @tap="onSubmit">
-          {{ mode === 'login' ? '登录' : '注册并登录' }}
+        <!-- 登录按钮 -->
+        <button class="login-btn" :disabled="loading" @tap="handleLogin">
+          <text v-if="!loading">登 录</text>
+          <text v-else>登录中...</text>
         </button>
 
-        <button class="btn btn--ghost" @tap="goBack">
-          返回
+        <!-- 分隔线 -->
+        <view class="divider">
+          <view class="divider-line"></view>
+          <text class="divider-text">其他方式</text>
+          <view class="divider-line"></view>
+        </view>
+
+        <!-- 微信登录 -->
+        <button class="login-btn login-btn--wechat" @tap="handleWechatLogin">
+          <text class="login-icon">💬</text>
+          <text class="login-text">微信一键登录</text>
         </button>
+      </view>
+
+      <!-- 用户协议 -->
+      <view class="agreement">
+        <text class="agreement-text">登录即表示同意</text>
+        <text class="agreement-link" @tap="showAgreement">《用户协议》</text>
+        <text class="agreement-text">和</text>
+        <text class="agreement-link" @tap="showPrivacy">《隐私政策》</text>
       </view>
     </view>
   </view>
 </template>
 
 <script setup>
+import { loginUser, wechatLogin } from '@/utils/user.js'
 import { ref } from 'vue'
-import { loginUser, registerUser } from '@/utils/user.js'
 
-const mode = ref('login')
 const username = ref('')
 const password = ref('')
+const showPassword = ref(false)
+const loading = ref(false)
 
-const toast = (title) => {
-  uni.showToast({ title, icon: 'none' })
+const togglePassword = () => {
+  showPassword.value = !showPassword.value
 }
 
-const onSubmit = async () => {
-  const name = username.value.trim()
-  const pwd = password.value.trim()
-
-  if (!name || !pwd) {
-    toast('请输入用户名和密码')
+const handleLogin = async () => {
+  if (!username.value.trim()) {
+    uni.showToast({ title: '请输入用户名', icon: 'none' })
+    return
+  }
+  if (!password.value.trim()) {
+    uni.showToast({ title: '请输入密码', icon: 'none' })
     return
   }
 
-  if (mode.value === 'login') {
-    const res = await loginUser({ username: name, password: pwd })
-    if (!res.ok) {
-      toast(res.message || '登录失败')
-      return
-    }
-    toast('登录成功')
-  } else {
-    const res = await registerUser({ username: name, password: pwd, role: 'user' })
-    if (!res.ok) {
-      toast(res.message || '注册失败')
-      return
-    }
-    toast('注册成功')
-  }
+  loading.value = true
+  try {
+    const result = await loginUser({
+      username: username.value.trim(),
+      password: password.value.trim()
+    })
 
-  setTimeout(() => {
-    uni.switchTab({ url: '/pages/index/index' })
-  }, 500)
+    if (result.ok) {
+      uni.showToast({ title: '登录成功', icon: 'success' })
+      setTimeout(() => {
+        // 根据角色跳转不同页面
+        if (result.user.role === 'admin') {
+          uni.reLaunch({ url: '/pages/admin/admin' })
+        } else {
+          uni.switchTab({ url: '/pages/index/index' })
+        }
+      }, 1000)
+    } else {
+      uni.showToast({ title: result.message || '登录失败', icon: 'none' })
+    }
+  } catch (e) {
+    uni.showToast({ title: '登录失败，请重试', icon: 'none' })
+  } finally {
+    loading.value = false
+  }
 }
 
-const goBack = () => {
-  uni.navigateBack()
+// 微信登录
+const handleWechatLogin = () => {
+  // #ifdef MP-WEIXIN
+  uni.getUserProfile({
+    desc: '用于完善用户资料和个性化推荐',
+    success: async (res) => {
+      const userInfo = res.userInfo || {}
+      uni.showLoading({ title: '登录中...' })
+
+      try {
+        const result = await wechatLogin({
+          nickname: userInfo.nickName || '用户',
+          avatar: userInfo.avatarUrl || '',
+          gender: userInfo.gender
+        })
+
+        uni.hideLoading()
+
+        if (result.ok) {
+          uni.showToast({ title: '登录成功', icon: 'success' })
+          setTimeout(() => {
+            uni.switchTab({ url: '/pages/index/index' })
+          }, 1000)
+        } else {
+          uni.showToast({ title: result.message || '登录失败', icon: 'none' })
+        }
+      } catch (e) {
+        uni.hideLoading()
+        uni.showToast({ title: '登录失败，请重试', icon: 'none' })
+      }
+    },
+    fail: () => {
+      uni.showToast({ title: '请允许授权', icon: 'none' })
+    }
+  })
+  // #endif
+
+  // #ifdef H5
+  uni.showLoading({ title: '登录中...' })
+  setTimeout(async () => {
+    const result = await wechatLogin({
+      nickname: '游客用户',
+      avatar: ''
+    })
+    uni.hideLoading()
+    if (result.ok) {
+      uni.showToast({ title: '登录成功', icon: 'success' })
+      setTimeout(() => {
+        uni.switchTab({ url: '/pages/index/index' })
+      }, 1000)
+    }
+  }, 500)
+  // #endif
+}
+
+// 显示用户协议
+const showAgreement = () => {
+  uni.showModal({
+    title: '用户协议',
+    content: `用户协议
+
+欢迎使用"什么值得学"小程序
+
+1. 服务说明
+"什么值得学"是一个课程推荐平台，我们不制作课程，只推荐优质的第三方课程内容。
+
+2. 使用规范
+用户在使用本平台时，应遵守相关法律法规，不得利用本平台从事违法违规活动。
+
+3. 免责声明
+本平台展示的课程来自第三方平台，课程质量、售后服务等均由第三方平台负责。
+
+4. 隐私保护
+我们尊重并保护用户隐私，不会非法收集用户信息。
+
+5. 版权说明
+本平台展示的课程内容版权归课程创作者或相关平台所有。
+
+如有问题，请联系客服。`,
+    showCancel: false
+  })
+}
+
+// 显示隐私政策
+const showPrivacy = () => {
+  uni.showModal({
+    title: '隐私政策',
+    content: `隐私政策
+
+我们非常重视您的个人隐私保护。
+
+1. 信息收集
+• 微信授权信息：昵称、头像
+• 浏览记录：用于个性化推荐
+• 收藏记录：用于管理您的收藏
+
+2. 信息使用
+• 个性化推荐课程
+• 统计和分析（不涉及个人信息）
+• 改进服务质量
+
+3. 信息保护
+我们采用合理的安全措施保护您的个人信息。
+
+4. 信息共享
+未经您同意，我们不会与第三方共享您的个人信息。
+
+5. 联系我们
+如对隐私政策有任何疑问，请联系客服。`,
+    showCancel: false
+  })
 }
 </script>
 
 <style lang="scss" scoped>
-$primary: #FF9000;
-$primary-light: #FFB347;
-$bg: #FFF9F3;
-$text: #2B2B2B;
-$sub: #7A7A7A;
-
-// 动画定义
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(40rpx);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-15rpx); }
-}
-
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
+$primary: #FF6B35;
+$primary-light: #FF9F5A;
+$orange-gradient: linear-gradient(135deg, $primary 0%, #FF8E53 50%, $primary-light 100%);
+$text-primary: #1A1A1A;
+$text-secondary: #5A5A5A;
+$text-muted: #999999;
 
 .page {
   min-height: 100vh;
-  background: linear-gradient(135deg, $bg 0%, #FFF5E6 50%, #FFF0D6 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 40rpx;
   position: relative;
-  overflow: hidden;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: -100rpx;
-    right: -100rpx;
-    width: 400rpx;
-    height: 400rpx;
-    background: radial-gradient(circle, rgba(255, 144, 0, 0.08) 0%, transparent 70%);
-    border-radius: 50%;
-  }
-
-  &::after {
-    content: '';
-    position: absolute;
-    bottom: -80rpx;
-    left: -80rpx;
-    width: 300rpx;
-    height: 300rpx;
-    background: radial-gradient(circle, rgba(255, 179, 71, 0.06) 0%, transparent 70%);
-    border-radius: 50%;
-  }
+  display: flex;
+  flex-direction: column;
 }
 
-.card {
+.page-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+}
+
+.bg-gradient {
   width: 100%;
-  max-width: 640rpx;
-  background: #fff;
+  height: 100%;
+  background: linear-gradient(180deg, #FFF5F0 0%, #FFFFFF 50%, #F8F5F0 100%);
+}
+
+/* Logo 区域 */
+.logo-section {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 160rpx;
+}
+
+.logo-icon {
+  width: 160rpx;
+  height: 160rpx;
+  background: $orange-gradient;
   border-radius: 40rpx;
-  padding: 72rpx 56rpx;
-  box-shadow: 0 16rpx 56rpx rgba(255, 144, 0, 0.12),
-              0 4rpx 32rpx rgba(255, 144, 0, 0.05),
-              inset 0 1rpx 0 rgba(255, 255, 255, 1);
-  border: 1rpx solid rgba(255, 144, 0, 0.1);
-  position: relative;
-  overflow: hidden;
-  animation: slideUp 0.6s ease-out;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 8rpx;
-    background: linear-gradient(90deg, $primary, $primary-light, $primary, $primary-light, $primary);
-    background-size: 200% 100%;
-    animation: shimmer 3s linear infinite;
-  }
-
-  &::after {
-    content: '🍊';
-    position: absolute;
-    top: 40rpx;
-    right: 40rpx;
-    font-size: 60rpx;
-    opacity: 0.06;
-    pointer-events: none;
-    animation: float 4s ease-in-out infinite;
-  }
-}
-
-.card__title {
-  font-size: 52rpx;
-  font-weight: 700;
-  color: $primary;
-  text-align: center;
-  margin-bottom: 56rpx;
-  background: linear-gradient(135deg, $primary 0%, $primary-light 50%, #FFCC80 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  letter-spacing: 4rpx;
-  position: relative;
-
-  &::after {
-    content: '';
-    position: absolute;
-    bottom: -16rpx;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 80rpx;
-    height: 6rpx;
-    background: linear-gradient(90deg, $primary, $primary-light);
-    border-radius: 3rpx;
-  }
-}
-
-.card__tabs {
-  display: flex;
-  padding: 8rpx;
-  border-radius: 999rpx;
-  background: #f5f5f5;
-  margin-bottom: 48rpx;
-}
-
-.card__tab {
-  flex: 1;
-  height: 72rpx;
-  border-radius: 999rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 30rpx;
-  color: $sub;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  font-weight: 500;
-
-  &:active {
-    opacity: 0.8;
-  }
+  font-size: 80rpx;
+  margin-bottom: 32rpx;
+  box-shadow: 0 16rpx 48rpx rgba(255, 107, 53, 0.3);
 }
 
-.card__tab.is-active {
-  background: linear-gradient(135deg, $primary, $primary-light);
-  color: #fff;
-  font-weight: 600;
-  box-shadow: 0 6rpx 20rpx rgba(255, 144, 0, 0.35);
-}
-
-.form__item {
-  margin-bottom: 36rpx;
-}
-
-.form__label {
-  display: block;
-  font-size: 30rpx;
-  color: $text;
+.logo-title {
+  font-size: 48rpx;
+  font-weight: 700;
+  color: $text-primary;
   margin-bottom: 16rpx;
-  font-weight: 500;
-  letter-spacing: 1rpx;
 }
 
-.form__input {
-  height: 96rpx;
+.logo-slogan {
+  font-size: 28rpx;
+  color: $text-muted;
+}
+
+/* 登录区域 */
+.login-section {
+  position: relative;
+  z-index: 1;
+  padding: 60rpx 48rpx 40rpx;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+/* 登录表单 */
+.login-form {
+  background: #fff;
   border-radius: 24rpx;
-  background: linear-gradient(135deg, #fafafa, #f5f5f5);
-  padding: 0 32rpx;
+  padding: 40rpx 32rpx;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.08);
+}
+
+.form-item {
+  display: flex;
+  align-items: center;
+  height: 100rpx;
+  background: #F8F8F8;
+  border-radius: 16rpx;
+  padding: 0 24rpx;
+  margin-bottom: 24rpx;
+}
+
+.form-item__icon {
+  font-size: 36rpx;
+  margin-right: 16rpx;
+}
+
+.form-item__input {
+  flex: 1;
+  height: 100rpx;
+  font-size: 30rpx;
+  color: $text-primary;
+}
+
+.input-placeholder {
+  color: $text-muted;
+  font-size: 28rpx;
+}
+
+.form-item__eye {
+  font-size: 36rpx;
+  padding: 10rpx;
+}
+
+.login-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 96rpx;
+  border-radius: 48rpx;
   font-size: 32rpx;
-  border: 2rpx solid transparent;
-  transition: all 0.3s ease;
-  box-shadow: inset 0 2rpx 6rpx rgba(0, 0, 0, 0.02);
-
-  &:focus {
-    background: #fff;
-    border-color: $primary;
-    box-shadow: 0 0 0 4rpx rgba(255, 144, 0, 0.1);
-  }
-}
-
-.btn {
-  width: 100%;
-  height: 104rpx;
-  border-radius: 52rpx;
-  font-size: 34rpx;
-  margin-top: 32rpx;
-  border: none;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  line-height: 104rpx;
-  text-align: center;
-}
-
-.btn:active {
-  transform: scale(0.97);
-}
-
-.btn--primary {
-  background: linear-gradient(135deg, $primary 0%, $primary-light 100%);
-  color: #fff;
-  box-shadow: 0 8rpx 32rpx rgba(255, 144, 0, 0.4),
-              0 4rpx 16rpx rgba(255, 179, 71, 0.25);
-  letter-spacing: 3rpx;
   font-weight: 600;
+  margin-bottom: 24rpx;
+  border: none;
+  background: $orange-gradient;
+  color: #fff;
+  box-shadow: 0 8rpx 24rpx rgba(255, 107, 53, 0.3);
 
   &:active {
-    box-shadow: 0 4rpx 20rpx rgba(255, 144, 0, 0.3);
+    opacity: 0.9;
+    transform: scale(0.98);
+  }
+
+  &[disabled] {
+    opacity: 0.6;
   }
 }
 
-.btn--ghost {
-  background: linear-gradient(135deg, #fafafa, #f8f8f8);
-  color: $sub;
-  border: 2rpx solid #e8e8e8;
-  letter-spacing: 2rpx;
-  font-weight: 500;
+.login-btn--wechat {
+  background: #07C160;
+  box-shadow: 0 8rpx 24rpx rgba(7, 193, 96, 0.3);
+  font-size: 28rpx;
 
-  &:active {
-    background: #f5f5f5;
-    border-color: #ddd;
+  .login-icon {
+    font-size: 36rpx;
+    margin-right: 8rpx;
   }
+
+  .login-text {
+    font-weight: 500;
+  }
+}
+
+/* 分隔线 */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  margin: 16rpx 0;
+}
+
+.divider-line {
+  flex: 1;
+  height: 1rpx;
+  background: #e5e5e5;
+}
+
+.divider-text {
+  font-size: 24rpx;
+  color: $text-muted;
+  white-space: nowrap;
+}
+
+/* 用户协议 */
+.agreement {
+  position: absolute;
+  bottom: 60rpx;
+  left: 0;
+  right: 0;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  flex-wrap: wrap;
+  padding: 0 40rpx;
+}
+
+.agreement-text {
+  font-size: 22rpx;
+  color: $text-muted;
+}
+
+.agreement-link {
+  font-size: 22rpx;
+  color: $primary;
 }
 </style>

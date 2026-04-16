@@ -1,0 +1,18 @@
+{
+	"bsonType": "object",
+	"required": ["name"],
+	"permission": {
+		"read": true,
+		"create": "auth.role == 'admin'",
+		"update": "auth.role == 'admin'",
+		"delete": "auth.role == 'admin'"
+	},
+	"properties": {
+		"_id": { "description": "分类ID" },
+		"name": { "bsonType": "string", "description": "分类名称" },
+		"icon": { "bsonType": "string", "description": "分类图标（emoji或URL）" },
+		"sortOrder": { "bsonType": "int", "description": "排序" },
+		"status": { "bsonType": "string", "description": "状态 active/inactive" },
+		"createdAt": { "bsonType": "timestamp", "description": "创建时间" }
+	}
+}

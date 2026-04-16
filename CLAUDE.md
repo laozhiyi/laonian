@@ -24,6 +24,7 @@ Notes:
 - Scripts are thin wrappers around the `uni` CLI.
 - There are no explicit lint/test scripts configured in `package.json`.
 - H5 router mode is configured as `hash` in `pages.json`.
+- Dev server runs at http://localhost:3000 (configured in `vite.config.js`).
 
 ## Architecture overview
 
@@ -43,7 +44,11 @@ This is a UniApp + Vue 3 e-commerce application ("橘上生香") built with Vite
 
 **Data layer** (`src/utils/`):
 - `request.js`: Token management and mock API layer using localStorage
+- `cloud-db.js`: UniCloud database operations
+- `cache.js`: localStorage caching utilities
 - Domain modules: `user.js`, `product.js`, `cart.js`, `order.js`, `address.js`
+
+**Authentication**: Mock auth system with localStorage persistence. Default admin: `admin`/`admin`. Regular users self-register.
 
 **Custom components**: `src/components/`
 

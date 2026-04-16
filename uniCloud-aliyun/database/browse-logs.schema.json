@@ -1,0 +1,21 @@
+{
+	"bsonType": "object",
+	"required": ["courseId"],
+	"permission": {
+		"read": "doc.userId == auth.uid || auth.role == 'admin'",
+		"create": true,
+		"update": false,
+		"delete": "doc.userId == auth.uid || auth.role == 'admin'"
+	},
+	"properties": {
+		"_id": { "description": "记录ID" },
+		"userId": { "bsonType": "string", "description": "用户ID" },
+		"courseId": { "bsonType": "string", "description": "课程ID" },
+		"courseTitle": { "bsonType": "string", "description": "课程标题" },
+		"courseCover": { "bsonType": "string", "description": "课程封面" },
+		"action": { "bsonType": "string", "description": "动作 view/click/favorite" },
+		"promoteCode": { "bsonType": "string", "description": "来源推广码" },
+		"source": { "bsonType": "string", "description": "来源 home/recommend/search/category" },
+		"createdAt": { "bsonType": "timestamp", "description": "时间" }
+	}
+}

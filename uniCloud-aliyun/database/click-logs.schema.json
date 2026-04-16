@@ -1,0 +1,20 @@
+{
+	"bsonType": "object",
+	"required": ["courseId"],
+	"permission": {
+		"read": "auth.role == 'admin'",
+		"create": true,
+		"update": false,
+		"delete": "auth.role == 'admin'"
+	},
+	"properties": {
+		"_id": { "description": "记录ID" },
+		"userId": { "bsonType": "string", "description": "用户ID" },
+		"courseId": { "bsonType": "string", "description": "课程ID" },
+		"promoteCode": { "bsonType": "string", "description": "推广码" },
+		"promoteUrl": { "bsonType": "string", "description": "跳转链接" },
+		"clickTime": { "bsonType": "timestamp", "description": "点击时间" },
+		"platform": { "bsonType": "string", "description": "来源平台" },
+		"ip": { "bsonType": "string", "description": "IP地址" }
+	}
+}

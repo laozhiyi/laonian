@@ -1,0 +1,18 @@
+{
+	"bsonType": "object",
+	"required": ["courseId", "userId"],
+	"permission": {
+		"read": "doc.userId == auth.uid || auth.role == 'admin'",
+		"create": true,
+		"update": "doc.userId == auth.uid || auth.role == 'admin'",
+		"delete": "doc.userId == auth.uid || auth.role == 'admin'"
+	},
+	"properties": {
+		"_id": { "description": "收藏ID" },
+		"userId": { "bsonType": "string", "description": "用户ID" },
+		"courseId": { "bsonType": "string", "description": "课程ID" },
+		"courseTitle": { "bsonType": "string", "description": "课程标题（冗余）" },
+		"courseCover": { "bsonType": "string", "description": "课程封面（冗余）" },
+		"createdAt": { "bsonType": "timestamp", "description": "收藏时间" }
+	}
+}

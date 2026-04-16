@@ -553,6 +553,7 @@ $bg: #FFFAF5;
   font-weight: 500;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }

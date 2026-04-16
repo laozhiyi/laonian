@@ -4,85 +4,138 @@
 			"path": "pages/index/index",
 			"style": {
 				"navigationStyle": "custom",
-				"navigationBarTitleText": "橘上生香"
+				"navigationBarTitleText": "什么值得学"
 			}
 		},
 		{
-			"path": "pages/mall/mall",
+			"path": "pages/discover/discover",
 			"style": {
 				"navigationStyle": "custom",
-				"navigationBarTitleText": "商城"
+				"navigationBarTitleText": "发现"
 			}
 		},
 		{
-			"path": "pages/me/me",
-			"style": {
-				"navigationStyle": "custom"
-			}
-		},
-		{
-			"path": "pages/auth/login",
-			"style": {
-				"navigationBarTitleText": "登录"
-			}
-		},
-		{
-			"path": "pages/product/detail",
+			"path": "pages/course/detail",
 			"style": {
 				"navigationStyle": "custom",
-				"navigationBarTitleText": "商品详情"
+				"navigationBarTitleText": "课程详情"
 			}
 		},
 		{
-			"path": "pages/admin/admin",
+			"path": "pages/search/search",
 			"style": {
 				"navigationStyle": "custom",
-				"navigationBarTitleText": "商品管理"
+				"navigationBarTitleText": "搜索"
 			}
 		},
 		{
-			"path": "pages/address/address",
-			"style": {
-				"navigationStyle": "custom"
-			}
-		},
-		{
-			"path": "pages/address/form",
+			"path": "pages/user/me",
 			"style": {
 				"navigationStyle": "custom",
-				"navigationBarTitleText": "编辑地址"
+				"navigationBarTitleText": "我的"
 			}
 		},
 		{
-			"path": "pages/checkout/checkout",
+			"path": "pages/user/learn-record",
 			"style": {
 				"navigationStyle": "custom",
-				"navigationBarTitleText": "确认订单"
+				"navigationBarTitleText": "学习记录"
 			}
 		},
 		{
-			"path": "pages/order/orders",
+			"path": "pages/user/favorites",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "我的收藏"
+			}
+		},
+		{
+			"path": "pages/user/order",
 			"style": {
 				"navigationStyle": "custom",
 				"navigationBarTitleText": "我的订单"
 			}
 		},
 		{
-			"path": "pages/order/detail",
+			"path": "pages/user/settings",
 			"style": {
-				"navigationStyle": "custom"
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "设置"
+			}
+		},
+		{
+			"path": "pages/auth/login",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "登录"
+			}
+		},
+		{
+			"path": "pages/admin/admin",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "管理后台"
+			}
+		},
+		{
+			"path": "pages/admin/course",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "课程管理"
+			}
+		},
+		{
+			"path": "pages/admin/course-form",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "课程编辑"
+			}
+		},
+		{
+			"path": "pages/admin/order",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "订单管理"
+			}
+		},
+		{
+			"path": "pages/admin/stats",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "数据统计"
+			}
+		},
+		{
+			"path": "pages/admin/category",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "分类管理"
+			}
+		},
+		{
+			"path": "pages/user/guide",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "新人攻略"
+			}
+		},
+		{
+			"path": "pages/user/contact",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "联系我们"
 			}
 		}
 	],
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
-		"navigationBarTitleText": "橘上生香",
+		"navigationBarTitleText": "什么值得学",
 		"navigationBarBackgroundColor": "#FFFFFF",
-		"backgroundColor": "#F8F8F8"
+		"backgroundColor": "#F8F5F0"
 	},
 	"tabBar": {
 		"color": "#7A7A7A",
-		"selectedColor": "#FF9000",
+		"selectedColor": "#FF6B35",
 		"backgroundColor": "#FFFFFF",
 		"borderStyle": "black",
 		"list": [
@@ -93,13 +146,13 @@
 				"selectedIconPath": "static/tab-home-active.png"
 			},
 			{
-				"pagePath": "pages/mall/mall",
-				"text": "商城",
-				"iconPath": "static/tab-mall.png",
-				"selectedIconPath": "static/tab-mall-active.png"
+				"pagePath": "pages/discover/discover",
+				"text": "发现",
+				"iconPath": "static/tab-discover.png",
+				"selectedIconPath": "static/tab-discover-active.png"
 			},
 			{
-				"pagePath": "pages/me/me",
+				"pagePath": "pages/user/me",
 				"text": "我的",
 				"iconPath": "static/tab-user.png",
 				"selectedIconPath": "static/tab-user-active.png"

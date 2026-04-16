@@ -1,0 +1,58 @@
+{
+	"bsonType": "object",
+	"required": ["title", "priceNow", "categoryId"],
+	"permission": {
+		"read": true,
+		"create": "doc.uid == auth.uid || auth.role == 'admin'",
+		"update": "doc.uid == auth.uid || auth.role == 'admin'",
+		"delete": "auth.role == 'admin'"
+	},
+	"properties": {
+		"_id": { "description": "课程ID" },
+		"title": { "bsonType": "string", "description": "课程标题" },
+		"subtitle": { "bsonType": "string", "description": "课程副标题/简介" },
+		"cover": { "bsonType": "string", "description": "封面图片URL" },
+		"categoryId": { "bsonType": "string", "description": "分类ID" },
+		"categoryName": { "bsonType": "string", "description": "分类名称" },
+		"tags": {
+			"bsonType": "array",
+			"description": "标签数组",
+			"itemType": "string"
+		},
+		"instructor": {
+			"bsonType": "object",
+			"description": "讲师信息",
+			"properties": {
+				"name": { "bsonType": "string" },
+				"avatar": { "bsonType": "string" },
+				"bio": { "bsonType": "string" }
+			}
+		},
+		"platform": { "bsonType": "string", "description": "来源平台" },
+		"originalUrl": { "bsonType": "string", "description": "第三方购买链接" },
+		"promoteUrl": { "bsonType": "string", "description": "推广追踪链接" },
+		"promoteCode": { "bsonType": "string", "description": "推广码" },
+		"commissionRate": { "bsonType": "number", "description": "佣金比例" },
+		"price": { "bsonType": "number", "description": "原价（分）" },
+		"priceNow": { "bsonType": "number", "description": "现价（分）" },
+		"discountText": { "bsonType": "string", "description": "折扣说明" },
+		"studentCount": { "bsonType": "int", "description": "学习人数" },
+		"rating": { "bsonType": "number", "description": "评分" },
+		"ratingCount": { "bsonType": "int", "description": "评价人数" },
+		"suitableFor": { "bsonType": "string", "description": "适合人群" },
+		"description": { "bsonType": "string", "description": "课程详细描述" },
+		"outline": {
+			"bsonType": "array",
+			"description": "课程大纲",
+			"itemType": "string"
+		},
+		"isFeatured": { "bsonType": "bool", "description": "是否精选" },
+		"isHot": { "bsonType": "bool", "description": "是否热门" },
+		"status": { "bsonType": "string", "description": "状态 online/offline" },
+		"sortOrder": { "bsonType": "int", "description": "排序权重" },
+		"viewCount": { "bsonType": "int", "description": "浏览次数" },
+		"clickCount": { "bsonType": "int", "description": "点击跳转次数" },
+		"createdAt": { "bsonType": "timestamp", "description": "创建时间" },
+		"updatedAt": { "bsonType": "timestamp", "description": "更新时间" }
+	}
+}

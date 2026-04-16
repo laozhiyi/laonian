@@ -48,3 +48,4 @@ uni_modules/.cache/
 !.vscode/extensions.json
 
 .claude
+node_modules

@@ -1010,6 +1010,7 @@ $bg-light: #FFFAF7;
   margin-bottom: 16rpx;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -1296,6 +1297,7 @@ $bg-light: #FFFAF7;
   color: $text-primary;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   margin-bottom: 16rpx;
