@@ -1,24 +1,26 @@
 /**
- * 分类模块 API（支持 Mock 数据）
+ * 分类模块 API（支持本地后端 HTTP 模式 + uniCloud 模式）
  */
 
-import { dbAdd, dbWhere, dbUpdate, dbRemove, dbGet } from './cloud-db.js'
-import { mockCategories } from './mock-data.js'
+import { categories as categoriesApi } from './cloud-db.js'
 
 const CATEGORIES_COLLECTION = 'categories'
-const useMock = () => {
-  if (typeof uniCloud === 'undefined' || !uniCloud) return true
+
+// 是否使用本地后端
+const useBackend = () => {
   try {
-    const db = uniCloud.database()
-    return !db
+    if (typeof uniCloud === 'undefined' || !uniCloud) return true
+    if (typeof uniCloud.database !== 'function') return true
+    return false
   } catch {
     return true
   }
 }
 
 export async function getCategories() {
-  if (useMock()) {
-    return { ok: true, list: mockCategories }
+  if (useBackend()) {
+    const res = await categoriesApi.list()
+    return { ok: res.success !== false, list: res.data || [] }
   }
   try {
     const db = uniCloud.database()
@@ -32,12 +34,14 @@ export async function getCategories() {
 }
 
 export async function getCategoryById(categoryId) {
-  if (useMock()) {
-    const cat = mockCategories.find(c => (c._id || c.id) === categoryId)
+  if (useBackend()) {
+    const res = await categoriesApi.list()
+    const cat = (res.data || []).find(c => (c._id || c.id) === categoryId)
     return { ok: !!cat, data: cat || null }
   }
   try {
-    const res = await dbGet(CATEGORIES_COLLECTION, categoryId)
+    const db = uniCloud.database()
+    const res = await db.collection(CATEGORIES_COLLECTION).doc(categoryId).get()
     return res.result && res.result.data ? { ok: true, data: res.result.data } : { ok: false, message: '分类不存在' }
   } catch (e) {
     return { ok: false, message: e.message }
@@ -45,44 +49,37 @@ export async function getCategoryById(categoryId) {
 }
 
 export async function addCategory(data) {
-  if (useMock()) {
-    const cat = { _id: 'cat-' + Date.now(), ...data, createdAt: Date.now() }
-    mockCategories.push(cat)
-    return { ok: true, id: cat._id }
+  if (useBackend()) {
+    try {
+      const res = await categoriesApi.create(data)
+      return res.success ? { ok: true, id: res.data?._id || res.data?.id } : { ok: false, message: res.error || '添加失败' }
+    } catch (e) {
+      return { ok: false, message: e.message }
+    }
   }
-  try {
-    const res = await dbAdd(CATEGORIES_COLLECTION, {
-      name: data.name, icon: data.icon || '', sortOrder: data.sortOrder || 0,
-      status: data.status || 'active', createdAt: Date.now()
-    })
-    return res.result && res.result.id ? { ok: true, id: res.result.id } : { ok: false, message: '添加失败' }
-  } catch (e) {
-    return { ok: false, message: e.message }
-  }
+  return { ok: false, message: 'uniCloud 模式请使用云函数' }
 }
 
 export async function updateCategory(categoryId, data) {
-  if (useMock()) {
-    const idx = mockCategories.findIndex(c => (c._id || c.id) === categoryId)
-    if (idx >= 0) mockCategories[idx] = { ...mockCategories[idx], ...data }
-    return { ok: true }
+  if (useBackend()) {
+    try {
+      const res = await categoriesApi.update(categoryId, data)
+      return res.success ? { ok: true } : { ok: false, message: res.error || '更新失败' }
+    } catch (e) {
+      return { ok: false, message: e.message }
+    }
   }
-  try {
-    return { ok: true, ...(await dbUpdate(CATEGORIES_COLLECTION, categoryId, data)) }
-  } catch (e) {
-    return { ok: false, message: e.message }
-  }
+  return { ok: false, message: 'uniCloud 模式请使用云函数' }
 }
 
 export async function deleteCategory(categoryId) {
-  if (useMock()) {
-    const idx = mockCategories.findIndex(c => (c._id || c.id) === categoryId)
-    if (idx >= 0) mockCategories.splice(idx, 1)
-    return { ok: true }
+  if (useBackend()) {
+    try {
+      const res = await categoriesApi.delete(categoryId)
+      return res.success ? { ok: true } : { ok: false, message: res.error || '删除失败' }
+    } catch (e) {
+      return { ok: false, message: e.message }
+    }
   }
-  try {
-    return await dbRemove(CATEGORIES_COLLECTION, categoryId)
-  } catch (e) {
-    return { ok: false, message: e.message }
-  }
+  return { ok: false, message: 'uniCloud 模式请使用云函数' }
 }

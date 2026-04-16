@@ -6,12 +6,6 @@
     "versionCode" : "100",
     "transformPx" : false,
 
-    "uniCloud" : {
-        "spaceId" : "mp-44a3c609-7e27-4c17-9550-27f618288f6a",
-        "clientSecret" : "tS1XwwUPjtAvnN0kMNRKcg==",
-        "provider" : "aliyun"
-    },
-
     "app-plus" : {
         "usingComponents" : true,
         "nvueStyleCompiler" : "uni-app",

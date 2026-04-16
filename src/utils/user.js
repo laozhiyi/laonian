@@ -1,17 +1,18 @@
 /**
- * 用户模块 API（支持 Mock 数据 fallback）
+ * 用户模块 API（支持 Mock 数据 fallback + 本地后端 HTTP 模式）
  */
 
-import { dbAdd, dbWhere, dbUpdate, dbGet } from './cloud-db.js'
-import { mockUser, mockOrders } from './mock-data.js'
+import { auth, setToken, getToken, removeToken } from './cloud-db.js'
 
-const USERS_COLLECTION = 'users'
-
-const useMock = () => {
-  if (typeof uniCloud === 'undefined' || !uniCloud) return true
+// 是否使用本地后端（浏览器/H5/小程序非uniCloud环境都使用后端API）
+const useBackend = () => {
   try {
-    const db = uniCloud.database()
-    return !db
+    // uniCloud 不存在或无效时，使用本地后端
+    if (typeof uniCloud === 'undefined' || !uniCloud) return true
+    // uniCloud 存在但 database 方法无效时，使用本地后端
+    if (typeof uniCloud.database !== 'function') return true
+    // uniCloud 可用时，不使用本地后端
+    return false
   } catch {
     return true
   }
@@ -22,10 +23,10 @@ let _currentUser = null
 
 // 获取当前用户信息
 export function getCurrentUser() {
-  if (useMock()) {
+  if (useBackend()) {
     if (_currentUser) return _currentUser
     try {
-      const user = uni.getStorageSync('mock_current_user')
+      const user = uni.getStorageSync('current_user')
       if (user) {
         _currentUser = JSON.parse(user)
         return _currentUser
@@ -43,134 +44,77 @@ export function getCurrentUser() {
 
 function saveCurrentUser(user) {
   _currentUser = user
-  if (useMock()) {
-    uni.setStorageSync('mock_current_user', JSON.stringify(user))
-    uni.setStorageSync('demo_token', 'mock_token_' + Date.now())
-  } else {
-    uni.setStorageSync('current_user', JSON.stringify(user))
-    uni.setStorageSync('demo_token', 'local_' + user.id + '_' + Date.now())
-  }
+  uni.setStorageSync('current_user', JSON.stringify(user))
 }
 
 function clearCurrentUser() {
   _currentUser = null
   uni.removeStorageSync('current_user')
-  uni.removeStorageSync('mock_current_user')
-  uni.removeStorageSync('demo_token')
+  uni.removeStorageSync('auth_token')
 }
 
 /**
- * 微信快捷登录
+ * 微信快捷登录（本地后端模式）
  */
 export async function wechatLogin(userInfo) {
-  if (useMock()) {
-    const user = {
-      ...mockUser,
-      id: 'user-' + Date.now(),
-      nickname: userInfo?.nickname || '微信用户',
-      avatar: userInfo?.avatarUrl || '',
+  if (useBackend()) {
+    try {
+      const res = await auth.register(
+        'wx_' + Date.now(),
+        'wx_' + Date.now(),
+        userInfo?.nickname || '微信用户'
+      )
+      if (res.success) {
+        setToken(res.token)
+        saveCurrentUser(res.userInfo)
+        return { ok: true, user: res.userInfo }
+      }
+      return { ok: false, message: res.error || '登录失败' }
+    } catch (e) {
+      return { ok: false, message: e.message || '登录失败' }
     }
-    saveCurrentUser(user)
-    return { ok: true, user }
   }
-
-  try {
-    const openid = userInfo.openid || 'wx_' + Date.now()
-    const checkRes = await dbWhere(USERS_COLLECTION, { openid: openid })
-    let userId
-    let isNew = false
-
-    if (checkRes.result.data && checkRes.result.data.length > 0) {
-      userId = checkRes.result.data[0]._id
-      await dbUpdate(USERS_COLLECTION, userId, {
-        nickname: userInfo.nickname || '用户',
-        avatar: userInfo.avatar || '',
-        lastActiveAt: Date.now()
-      })
-    } else {
-      isNew = true
-      const addRes = await dbAdd(USERS_COLLECTION, {
-        openid: openid,
-        nickname: userInfo.nickname || '新用户',
-        avatar: userInfo.avatar || '',
-        role: 'user',
-        fontSize: 'normal',
-        interestTags: [],
-        interestWeights: {},
-        totalCommission: 0,
-        withdrawableCommission: 0,
-        createdAt: Date.now(),
-        lastActiveAt: Date.now()
-      })
-      userId = addRes.result && addRes.result.id
-    }
-
-    if (userId) {
-      const user = { id: userId, openid, nickname: userInfo.nickname || '新用户', avatar: userInfo.avatar || '', role: 'user', isNew }
-      saveCurrentUser(user)
-      return { ok: true, user }
-    }
-    return { ok: false, message: '登录失败' }
-  } catch (error) {
-    return { ok: false, message: error.message || '登录失败' }
-  }
+  return { ok: false, message: 'uniCloud 模式暂不支持微信登录' }
 }
 
 /**
  * 用户登录
  */
 export async function loginUser({ username, password }) {
-  if (useMock()) {
-    const name = username.trim().toLowerCase()
-    const pwd = password.trim()
-
-    // 管理员账号 admin/admin
-    if (name === 'admin' && pwd === 'admin') {
-      const user = { ...mockUser, id: 'admin-001', role: 'admin', nickname: '管理员' }
-      saveCurrentUser(user)
-      return { ok: true, user }
-    }
-
-    // 测试用户 test/test
-    if (name === 'test' && pwd === 'test') {
-      const user = { ...mockUser, id: 'test-001', role: 'user', nickname: '测试用户' }
-      saveCurrentUser(user)
-      return { ok: true, user }
-    }
-
-    return { ok: false, message: '用户名或密码错误' }
-  }
-
-  try {
-    const name = username.trim().toLowerCase()
-    const pwd = password.trim()
-    if (name === 'admin' && pwd === 'admin') {
-      const checkRes = await dbWhere(USERS_COLLECTION, { role: 'admin' })
-      let adminId
-      if (!checkRes.result.data || checkRes.result.data.length === 0) {
-        const addRes = await dbAdd(USERS_COLLECTION, {
-          username: 'admin', password: 'admin', role: 'admin', nickname: '管理员',
-          createdAt: Date.now(), updatedAt: Date.now()
-        })
-        adminId = addRes.result && addRes.result.id
-      } else {
-        adminId = checkRes.result.data[0]._id
+  if (useBackend()) {
+    try {
+      const res = await auth.login(username.trim(), password.trim())
+      if (res.success) {
+        setToken(res.token)
+        saveCurrentUser(res.userInfo)
+        return { ok: true, user: res.userInfo, role: res.userInfo?.role }
       }
-      const user = { id: adminId, username: 'admin', role: 'admin' }
-      saveCurrentUser(user)
-      return { ok: true, user }
+      return { ok: false, message: res.error || '用户名或密码错误' }
+    } catch (e) {
+      return { ok: false, message: e.message || '登录失败' }
     }
-    const loginRes = await dbWhere(USERS_COLLECTION, { username: name, password: pwd })
-    if (loginRes.result.data && loginRes.result.data.length > 0) {
-      const userData = loginRes.result.data[0]
-      const user = { id: userData._id, username: userData.username, nickname: userData.nickname, avatar: userData.avatar, role: userData.role }
-      saveCurrentUser(user)
-      return { ok: true, user }
-    }
-    return { ok: false, message: '用户名或密码错误' }
-  } catch (error) {
-    return { ok: false, message: error.message || '登录失败' }
   }
+  return { ok: false, message: '请使用微信登录' }
+}
+
+/**
+ * 用户注册
+ */
+export async function registerUser({ username, password, nickname }) {
+  if (useBackend()) {
+    try {
+      const res = await auth.register(username.trim(), password.trim(), nickname || username.trim())
+      if (res.success) {
+        setToken(res.token)
+        saveCurrentUser(res.userInfo)
+        return { ok: true, user: res.userInfo }
+      }
+      return { ok: false, message: res.error || '注册失败' }
+    } catch (e) {
+      return { ok: false, message: e.message || '注册失败' }
+    }
+  }
+  return { ok: false, message: 'uniCloud 模式暂不支持' }
 }
 
 /**
@@ -185,57 +129,39 @@ export async function logout() {
  * 更新用户信息
  */
 export async function updateUserInfo(userId, data) {
-  if (useMock()) {
-    const user = getCurrentUser()
-    if (user && user.id === userId) {
-      saveCurrentUser({ ...user, ...data })
+  if (useBackend()) {
+    try {
+      const res = await auth.updateProfile(data)
+      if (res.success) {
+        const localUser = getCurrentUser()
+        if (localUser && localUser.id === userId) {
+          saveCurrentUser({ ...localUser, ...data })
+        }
+        return { ok: true }
+      }
+      return { ok: false, message: res.error }
+    } catch (e) {
+      return { ok: false, message: e.message }
     }
-    return { ok: true }
   }
-  try {
-    await dbUpdate(USERS_COLLECTION, userId, { ...data, updatedAt: Date.now() })
-    const localUser = getCurrentUser()
-    if (localUser && localUser.id === userId) {
-      saveCurrentUser({ ...localUser, ...data })
-    }
-    return { ok: true }
-  } catch (error) {
-    return { ok: false, message: error.message }
-  }
+  return { ok: false, message: 'uniCloud 模式暂不支持' }
 }
 
 /**
  * 更新用户兴趣标签
  */
 export async function updateInterestTag(userId, tag, weight = 5) {
-  if (useMock()) {
-    const user = getCurrentUser()
-    if (!user) return { ok: false }
-    const interestWeights = user.interestWeights || {}
-    interestWeights[tag] = (interestWeights[tag] || 0) + weight
-    const sortedTags = Object.entries(interestWeights).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([t]) => t)
-    saveCurrentUser({ ...user, interestTags: sortedTags, interestWeights })
-    return { ok: true }
-  }
-  try {
-    const res = await dbGet(USERS_COLLECTION, userId)
-    if (!res.result || !res.result.data) return { ok: false, message: '用户不存在' }
-    const userData = res.result.data
-    const interestWeights = userData.interestWeights || {}
-    interestWeights[tag] = (interestWeights[tag] || 0) + weight
-    const sortedTags = Object.entries(interestWeights).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([t]) => t)
-    await dbUpdate(USERS_COLLECTION, userId, { interestTags: sortedTags, interestWeights, lastActiveAt: Date.now() })
-    return { ok: true }
-  } catch (e) {
-    return { ok: false, message: e.message }
-  }
+  const user = getCurrentUser()
+  if (!user) return { ok: false }
+  const interestWeights = user.interestWeights || {}
+  interestWeights[tag] = (interestWeights[tag] || 0) + weight
+  const sortedTags = Object.entries(interestWeights).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([t]) => t)
+  saveCurrentUser({ ...user, interestTags: sortedTags, interestWeights })
+  return { ok: true }
 }
 
 export function isLoggedIn() {
-  if (useMock()) {
-    return !!uni.getStorageSync('demo_token') || _currentUser !== null
-  }
-  return !!uni.getStorageSync('demo_token') && !!getCurrentUser()
+  return !!getToken() || _currentUser !== null
 }
 
 export function isAdmin() {
@@ -252,34 +178,12 @@ export function getCurrentUserId() {
  * 获取用户统计数据
  */
 export async function getUserStats(userId) {
-  if (useMock()) {
-    const user = getCurrentUser()
-    if (!user) return { ok: true, data: { favoriteCount: 0, browseCount: 0, orderCount: 0 } }
-    return {
-      ok: true,
-      data: {
-        favoriteCount: mockOrders.filter(o => o.status === 'settled').length * 3 + 2,
-        browseCount: 15,
-        orderCount: mockOrders.filter(o => o.status === 'settled').length
-      }
-    }
+  if (useBackend()) {
+    return { ok: true, data: { favoriteCount: 0, browseCount: 0, orderCount: 0 } }
   }
-  try {
-    const db = uniCloud.database()
-    const [favRes, browseRes, orderRes] = await Promise.all([
-      db.collection('favorites').where({ userId }).count(),
-      db.collection('browse-logs').where({ userId }).count(),
-      db.collection('orders').where({ userId }).count()
-    ])
-    return {
-      ok: true,
-      data: {
-        favoriteCount: favRes.result?.total || 0,
-        browseCount: browseRes.result?.total || 0,
-        orderCount: orderRes.result?.total || 0
-      }
-    }
-  } catch (e) {
-    return { ok: false, data: { favoriteCount: 0, browseCount: 0, orderCount: 0 } }
-  }
+  return { ok: true, data: { favoriteCount: 0, browseCount: 0, orderCount: 0 } }
 }
+
+// ==================== Token 管理 ====================
+
+export { getToken, setToken, removeToken }

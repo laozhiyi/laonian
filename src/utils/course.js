@@ -1,20 +1,18 @@
 /**
- * 课程模块 API（支持 Mock 数据 fallback）
+ * 课程模块 API（支持本地后端 HTTP 模式 + uniCloud 模式）
  */
 
-import { dbAdd, dbWhere, dbUpdate, dbGet, dbRemove } from './cloud-db.js'
-import { mockCourses, mockCategories, updateMockCourse, removeMockCourse, addMockCourse } from './mock-data.js'
+import { courses as coursesApi, categories as categoriesApi } from './cloud-db.js'
 
 const COURSES_COLLECTION = 'courses'
 const CATEGORIES_COLLECTION = 'categories'
 
-// 检查是否使用 mock 数据
-const useMock = () => {
-  if (typeof uniCloud === 'undefined' || !uniCloud) return true
+// 是否使用本地后端（浏览器环境默认使用后端 API）
+const useBackend = () => {
   try {
-    // 尝试获取数据库实例，如果失败则使用 mock
-    const db = uniCloud.database()
-    return !db
+    if (typeof uniCloud === 'undefined' || !uniCloud) return true
+    if (typeof uniCloud.database !== 'function') return true
+    return false
   } catch {
     return true
   }
@@ -44,38 +42,28 @@ export async function getCourses(params = {}) {
     limit = 20
   } = params
 
-  if (useMock()) {
-    let list = [...mockCourses]
-
-    if (categoryId) {
-      list = list.filter(c => c.categoryId === categoryId)
-    }
-    if (isFeatured !== null) {
-      list = list.filter(c => c.isFeatured === isFeatured)
-    }
-    if (status) {
-      list = list.filter(c => c.status === status)
-    }
-
-    // 排序
+  if (useBackend()) {
+    const res = await coursesApi.list({
+      categoryId: categoryId || undefined,
+      featured: isFeatured,
+      hot: undefined,
+      status: status,
+      page: page,
+      pageSize: limit,
+    })
+    let list = res.data || []
     if (sortBy === 'hot') {
-      list.sort((a, b) => (b.clickCount || 0) - (a.clickCount || 0))
-    } else if (sortBy === 'new') {
-      list.sort((a, b) => (b.sortOrder || 0) - (a.sortOrder || 0))
+      list.sort((a, b) => (b.clickCount || b.viewCount || 0) - (a.clickCount || a.viewCount || 0))
     } else if (sortBy === 'price') {
       list.sort((a, b) => (a.priceNow || 0) - (b.priceNow || 0))
-    } else {
-      list.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
+    } else if (sortBy === 'new') {
+      list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
     }
-
-    const start = (page - 1) * limit
-    const paged = list.slice(start, start + limit)
-    return { ok: true, list: paged, total: list.length }
+    return { ok: res.success !== false, list, total: res.total || list.length }
   }
 
   try {
     const db = uniCloud.database()
-    // 所有条件合并到同一个 where 对象中，避免多次调用 where 导致前面的条件被覆盖
     const whereCondition = {}
     whereCondition.status = status
     if (categoryId) {
@@ -109,9 +97,9 @@ export async function getCourses(params = {}) {
  * 获取精选课程（Banner）
  */
 export async function getFeaturedCourses(limit = 5) {
-  if (useMock()) {
-    const featured = mockCourses.filter(c => c.isFeatured).slice(0, limit)
-    return { ok: true, list: featured }
+  if (useBackend()) {
+    const res = await coursesApi.getFeatured()
+    return { ok: res.success !== false, list: res.data || [] }
   }
 
   try {
@@ -131,9 +119,9 @@ export async function getFeaturedCourses(limit = 5) {
  * 获取热门课程
  */
 export async function getHotCourses(limit = 10) {
-  if (useMock()) {
-    const hot = [...mockCourses].sort((a, b) => (b.clickCount || 0) - (a.clickCount || 0)).slice(0, limit)
-    return { ok: true, list: hot }
+  if (useBackend()) {
+    const res = await coursesApi.list({ hot: true, status: 'online', pageSize: limit })
+    return { ok: res.success !== false, list: res.data || [] }
   }
 
   try {
@@ -152,16 +140,20 @@ export async function getHotCourses(limit = 10) {
  * 获取课程详情
  */
 export async function getCourseDetail(courseId) {
-  if (useMock()) {
-    const course = mockCourses.find(c => (c._id || c.id) === courseId)
-    return { ok: !!course, data: course || null }
+  if (useBackend()) {
+    const res = await coursesApi.getById(courseId)
+    if (res.success && res.data) {
+      return { ok: true, data: res.data }
+    }
+    return { ok: false, message: '课程不存在' }
   }
 
   try {
-    const res = await dbGet(COURSES_COLLECTION, courseId)
+    const db = uniCloud.database()
+    const res = await db.collection(COURSES_COLLECTION).doc(courseId).get()
     if (res.result && res.result.data) {
       const course = transformCourse(res.result.data)
-      dbUpdate(COURSES_COLLECTION, courseId, { viewCount: (course.viewCount || 0) + 1 }).catch(() => {})
+      db.collection(COURSES_COLLECTION).doc(courseId).update({ viewCount: (course.viewCount || 0) + 1 }).catch(() => {})
       return { ok: true, data: course }
     }
     return { ok: false, message: '课程不存在' }
@@ -174,16 +166,9 @@ export async function getCourseDetail(courseId) {
  * 搜索课程
  */
 export async function searchCourses(keyword, page = 1, limit = 20) {
-  if (useMock()) {
-    const kw = keyword.toLowerCase()
-    const list = mockCourses.filter(c =>
-      (c.title && c.title.toLowerCase().includes(kw)) ||
-      (c.subtitle && c.subtitle.toLowerCase().includes(kw)) ||
-      (c.platform && c.platform.toLowerCase().includes(kw)) ||
-      (c.tags && c.tags.some(t => t.toLowerCase().includes(kw)))
-    )
-    const start = (page - 1) * limit
-    return { ok: true, list: list.slice(start, start + limit), total: list.length }
+  if (useBackend()) {
+    const res = await coursesApi.list({ keyword, status: 'online', page, pageSize: limit })
+    return { ok: res.success !== false, list: res.data || [], total: res.total || 0 }
   }
 
   try {
@@ -205,13 +190,9 @@ export async function searchCourses(keyword, page = 1, limit = 20) {
  * 获取个性化推荐
  */
 export async function getRecommendations(userId, interestTags = [], limit = 20) {
-  if (useMock()) {
-    let list = [...mockCourses]
-    if (interestTags.length > 0) {
-      list = list.filter(c => c.tags && c.tags.some(t => interestTags.includes(t)))
-    }
-    list.sort((a, b) => (b.clickCount || 0) - (a.clickCount || 0))
-    return { ok: true, list: list.slice(0, limit) }
+  if (useBackend()) {
+    const res = await coursesApi.getRecommended(1, limit)
+    return { ok: res.success !== false, list: res.data || [] }
   }
 
   try {
@@ -237,8 +218,9 @@ export async function getRecommendations(userId, interestTags = [], limit = 20) 
  * 获取课程总数
  */
 export async function getCourseCount() {
-  if (useMock()) {
-    return { ok: true, total: mockCourses.length }
+  if (useBackend()) {
+    const res = await coursesApi.list({ pageSize: 1 })
+    return { ok: res.success !== false, total: res.total || 0 }
   }
   try {
     const db = uniCloud.database()
@@ -253,51 +235,30 @@ export async function getCourseCount() {
  * 添加课程（管理员）
  */
 export async function addCourse(courseData) {
-  if (useMock()) {
-    const newCourse = addMockCourse(courseData)
-    return { ok: true, id: newCourse._id }
+  if (useBackend()) {
+    try {
+      const res = await coursesApi.create(courseData)
+      return res.success ? { ok: true, id: res.data?._id || res.data?.id } : { ok: false, message: res.error || '添加失败' }
+    } catch (e) {
+      return { ok: false, message: e.message }
+    }
   }
-  try {
-    const now = Date.now()
-    const data = {
-      ...courseData,
-      viewCount: 0,
-      clickCount: 0,
-      status: courseData.status || 'offline',
-      isFeatured: courseData.isFeatured || false,
-      sortOrder: courseData.sortOrder || 0,
-      createdAt: now,
-      updatedAt: now
-    }
-    if (!data.promoteCode) {
-      data.promoteCode = 'smz_' + now.toString(36)
-    }
-    if (data.originalUrl && data.promoteCode) {
-      data.promoteUrl = data.originalUrl + (data.originalUrl.includes('?') ? '&' : '?') +
-        'from=smz_learning&promo=' + data.promoteCode
-    }
-    const res = await dbAdd(COURSES_COLLECTION, data)
-    return res.result && res.result.id ? { ok: true, id: res.result.id } : { ok: false, message: '添加失败' }
-  } catch (e) {
-    return { ok: false, message: e.message }
-  }
+  return { ok: false, message: 'uniCloud 模式请使用云函数' }
 }
 
 /**
  * 更新课程
  */
 export async function updateCourse(courseId, courseData) {
-  if (useMock()) {
-    const success = updateMockCourse(courseId, courseData)
-    return { ok: success }
+  if (useBackend()) {
+    try {
+      const res = await coursesApi.update(courseId, courseData)
+      return res.success ? { ok: true } : { ok: false, message: res.error || '更新失败' }
+    } catch (e) {
+      return { ok: false, message: e.message }
+    }
   }
-  try {
-    courseData.updatedAt = Date.now()
-    const res = await dbUpdate(COURSES_COLLECTION, courseId, courseData)
-    return { ok: true, ...res }
-  } catch (e) {
-    return { ok: false, message: e.message }
-  }
+  return { ok: false, message: 'uniCloud 模式请使用云函数' }
 }
 
 /**
@@ -311,23 +272,24 @@ export async function toggleCourseStatus(courseId, status) {
  * 删除课程
  */
 export async function deleteCourse(courseId) {
-  if (useMock()) {
-    const success = removeMockCourse(courseId)
-    return { ok: success }
+  if (useBackend()) {
+    try {
+      const res = await coursesApi.delete(courseId)
+      return res.success ? { ok: true } : { ok: false, message: res.error || '删除失败' }
+    } catch (e) {
+      return { ok: false, message: e.message }
+    }
   }
-  try {
-    return await dbRemove(COURSES_COLLECTION, courseId)
-  } catch (e) {
-    return { ok: false, message: e.message }
-  }
+  return { ok: false, message: 'uniCloud 模式请使用云函数' }
 }
 
 /**
- * 获取分类列表（也放在 course.js 中方便统一导出）
+ * 获取分类列表
  */
 export async function getCategories() {
-  if (useMock()) {
-    return { ok: true, list: mockCategories }
+  if (useBackend()) {
+    const res = await categoriesApi.list()
+    return { ok: res.success !== false, list: res.data || [] }
   }
   try {
     const db = uniCloud.database()

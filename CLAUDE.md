@@ -1,65 +1,65 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
 
-## Quick commands
+**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
-- Install deps: `npm install`
-- Dev (auto-select platform): `npm run dev:custom` (runs `uni -p`, prompts/uses target platform)
-- Dev H5: `npm run dev:h5` (dev server at http://localhost:3000)
-- Dev H5 SSR: `npm run dev:h5:ssr`
-- Dev mini-programs (examples):
-  - Weixin: `npm run dev:mp-weixin`
-  - Alipay: `npm run dev:mp-alipay`
-  - Harmony: `npm run dev:mp-harmony`
+## 1. Think Before Coding
 
-- Build H5: `npm run build:h5`
-- Build H5 SSR: `npm run build:h5:ssr`
-- Build mini-programs (examples):
-  - Weixin: `npm run build:mp-weixin`
-  - Alipay: `npm run build:mp-alipay`
-  - Harmony: `npm run build:mp-harmony`
+**Don't assume. Don't hide confusion. Surface tradeoffs.**
 
-Notes:
-- Scripts are thin wrappers around the `uni` CLI.
-- There are no explicit lint/test scripts configured in `package.json`.
-- H5 router mode is configured as `hash` in `pages.json`.
-- Dev server runs at http://localhost:3000 (configured in `vite.config.js`).
+Before implementing:
+- State your assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them - don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what's confusing. Ask.
 
-## Architecture overview
+## 2. Simplicity First
 
-This is a UniApp + Vue 3 e-commerce application ("橘上生香") built with Vite.
+**Minimum code that solves the problem. Nothing speculative.**
 
-- **App entry**: `src/main.js` exports `createApp()` using `createSSRApp(App)` pattern.
-- **Top-level component**: `src/App.vue` defines UniApp lifecycle hooks (`onLaunch`, `onShow`, `onHide`).
-- **Pages**: Defined in `src/pages.json` with custom navigation styling on most pages.
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it.
 
-**Page structure**:
-- TabBar pages: `index/index`, `mall/mall`, `me/me`
-- Auth: `auth/login`
-- Product: `product/detail`, `admin/admin` (management)
-- Order: `order/orders`, `order/detail`
-- Checkout: `checkout/checkout`
-- Address: `address/address`, `address/form`
+Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
 
-**Data layer** (`src/utils/`):
-- `request.js`: Token management and mock API layer using localStorage
-- `cloud-db.js`: UniCloud database operations
-- `cache.js`: localStorage caching utilities
-- Domain modules: `user.js`, `product.js`, `cart.js`, `order.js`, `address.js`
+## 3. Surgical Changes
 
-**Authentication**: Mock auth system with localStorage persistence. Default admin: `admin`/`admin`. Regular users self-register.
+**Touch only what you must. Clean up only your own mess.**
 
-**Custom components**: `src/components/`
+When editing existing code:
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- If you notice unrelated dead code, mention it - don't delete it.
 
-**Key dependencies**:
-- Vue 3 with Composition API
-- Vue-i18n for internationalization
-- Sass for styling
+When your changes create orphans:
+- Remove imports/variables/functions that YOUR changes made unused.
+- Don't remove pre-existing dead code unless asked.
 
-**Configuration files**:
-- `vite.config.js`: Vite config with `@dcloudio/vite-plugin-uni`, dev server on port 3000
-- `src/manifest.json`: Platform-specific settings for App-plus and mini-programs
-- `src/uni.scss`: Global styles
+The test: Every changed line should trace directly to the user's request.
 
-**Static assets**: `src/static/` (includes tab bar icons)
+## 4. Goal-Driven Execution
+
+**Define success criteria. Loop until verified.**
+
+Transform tasks into verifiable goals:
+- "Add validation" → "Write tests for invalid inputs, then make them pass"
+- "Fix the bug" → "Write a test that reproduces it, then make it pass"
+- "Refactor X" → "Ensure tests pass before and after"
+
+For multi-step tasks, state a brief plan:
+```
+1. [Step] → verify: [check]
+2. [Step] → verify: [check]
+3. [Step] → verify: [check]
+```
+
+Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+
+---
+
+**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.

@@ -1,16 +1,17 @@
 /**
- * 收藏模块 API（支持 Mock 数据）
+ * 收藏模块 API（支持本地后端 HTTP 模式 + uniCloud 模式）
  */
 
-import { dbAdd, dbWhere, dbRemove } from './cloud-db.js'
-import { mockFavorites } from './mock-data.js'
+import { favorites as favoritesApi } from './cloud-db.js'
 
 const FAVORITES_COLLECTION = 'favorites'
-const useMock = () => {
-  if (typeof uniCloud === 'undefined' || !uniCloud) return true
+
+// 是否使用本地后端
+const useBackend = () => {
   try {
-    const db = uniCloud.database()
-    return !db
+    if (typeof uniCloud === 'undefined' || !uniCloud) return true
+    if (typeof uniCloud.database !== 'function') return true
+    return false
   } catch {
     return true
   }
@@ -19,16 +20,21 @@ const useMock = () => {
 /**
  * 获取收藏列表
  */
-export async function getFavorites(userId) {
-  if (useMock() || !userId) {
-    return { ok: true, list: mockFavorites }
+export async function getFavorites(userId, page = 1, limit = 20) {
+  if (useBackend()) {
+    try {
+      const res = await favoritesApi.list(page, limit)
+      return { ok: res.success !== false, list: res.data || [], total: res.total || 0 }
+    } catch (e) {
+      return { ok: false, list: [], message: e.message }
+    }
   }
   try {
     const db = uniCloud.database()
     const res = await db.collection(FAVORITES_COLLECTION)
       .where({ userId })
       .orderBy('createdAt', 'desc').get()
-    return { ok: true, list: res.result.data || [] }
+    return { ok: true, list: res.result.data || [], total: res.result.affectedDocs || 0 }
   } catch (e) {
     return { ok: false, list: [], message: e.message }
   }
@@ -38,59 +44,49 @@ export async function getFavorites(userId) {
  * 添加收藏
  */
 export async function addFavorite(userId, course) {
-  if (useMock() || !userId) {
-    const fav = { _id: 'fav-' + Date.now(), userId, courseId: course.id || course._id, courseTitle: course.title, courseCover: course.cover, createdAt: Date.now() }
-    const exists = mockFavorites.find(f => f.courseId === (course.id || course._id))
-    if (!exists) mockFavorites.unshift(fav)
-    return { ok: true }
+  if (useBackend()) {
+    try {
+      const res = await favoritesApi.add(course.id || course._id)
+      return res.success ? { ok: true } : { ok: false, message: res.error || '收藏失败' }
+    } catch (e) {
+      return { ok: false, message: e.message }
+    }
   }
-  try {
-    const db = uniCloud.database()
-    const checkRes = await db.collection(FAVORITES_COLLECTION)
-      .where({ userId, courseId: course.id || course._id }).get()
-    if (checkRes.result.data && checkRes.result.data.length > 0) return { ok: true, message: '已收藏' }
-    const res = await dbAdd(FAVORITES_COLLECTION, {
-      userId, courseId: course.id || course._id, courseTitle: course.title,
-      courseCover: course.cover, createdAt: Date.now()
-    })
-    return res.result && res.result.id ? { ok: true, id: res.result.id } : { ok: false, message: '收藏失败' }
-  } catch (e) {
-    return { ok: false, message: e.message }
-  }
+  return { ok: false, message: 'uniCloud 模式请使用云函数' }
 }
 
 /**
- * 取消收藏
+ * 取消收藏（HTTP 模式：通过 courseId 查找对应收藏记录后删除）
  */
 export async function removeFavorite(userId, courseId) {
-  if (useMock() || !userId) {
-    const idx = mockFavorites.findIndex(f => f.courseId === courseId)
-    if (idx >= 0) mockFavorites.splice(idx, 1)
-    return { ok: true }
+  if (useBackend()) {
+    try {
+      // 遍历收藏列表找到对应 courseId 的记录
+      const res = await favoritesApi.list(1, 100)
+      const fav = (res.data || []).find(f => f.courseId === courseId)
+      if (fav) {
+        const delRes = await favoritesApi.remove(fav._id || fav.id)
+        return delRes.success ? { ok: true } : { ok: false, message: delRes.error || '取消失败' }
+      }
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, message: e.message }
+    }
   }
-  try {
-    const db = uniCloud.database()
-    await db.collection(FAVORITES_COLLECTION)
-      .where({ userId, courseId }).remove()
-    return { ok: true }
-  } catch (e) {
-    return { ok: false, message: e.message }
-  }
+  return { ok: false, message: 'uniCloud 模式请使用云函数' }
 }
 
 /**
  * 检查是否已收藏
  */
 export async function checkFavorite(userId, courseId) {
-  if (useMock() || !userId) {
-    return { ok: true, isFavorite: mockFavorites.some(f => f.courseId === courseId) }
+  if (useBackend()) {
+    try {
+      const res = await favoritesApi.check(courseId)
+      return { ok: res.success !== false, isFavorite: res.data?.isFavorite || false }
+    } catch (e) {
+      return { ok: false, isFavorite: false }
+    }
   }
-  try {
-    const db = uniCloud.database()
-    const res = await db.collection(FAVORITES_COLLECTION)
-      .where({ userId, courseId }).get()
-    return { ok: true, isFavorite: !!(res.result.data && res.result.data.length > 0) }
-  } catch (e) {
-    return { ok: false, isFavorite: false }
-  }
+  return { ok: false, isFavorite: false }
 }

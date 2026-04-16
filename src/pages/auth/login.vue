@@ -50,19 +50,6 @@
           <text v-if="!loading">登 录</text>
           <text v-else>登录中...</text>
         </button>
-
-        <!-- 分隔线 -->
-        <view class="divider">
-          <view class="divider-line"></view>
-          <text class="divider-text">其他方式</text>
-          <view class="divider-line"></view>
-        </view>
-
-        <!-- 微信登录 -->
-        <button class="login-btn login-btn--wechat" @tap="handleWechatLogin">
-          <text class="login-icon">💬</text>
-          <text class="login-text">微信一键登录</text>
-        </button>
       </view>
 
       <!-- 用户协议 -->
@@ -77,11 +64,11 @@
 </template>
 
 <script setup>
-import { loginUser, wechatLogin } from '@/utils/user.js'
+import { loginUser } from '@/utils/user.js'
 import { ref } from 'vue'
 
-const username = ref('')
-const password = ref('')
+const username = ref('admin')
+const password = ref('admin')
 const showPassword = ref(false)
 const loading = ref(false)
 
@@ -124,61 +111,6 @@ const handleLogin = async () => {
   } finally {
     loading.value = false
   }
-}
-
-// 微信登录
-const handleWechatLogin = () => {
-  // #ifdef MP-WEIXIN
-  uni.getUserProfile({
-    desc: '用于完善用户资料和个性化推荐',
-    success: async (res) => {
-      const userInfo = res.userInfo || {}
-      uni.showLoading({ title: '登录中...' })
-
-      try {
-        const result = await wechatLogin({
-          nickname: userInfo.nickName || '用户',
-          avatar: userInfo.avatarUrl || '',
-          gender: userInfo.gender
-        })
-
-        uni.hideLoading()
-
-        if (result.ok) {
-          uni.showToast({ title: '登录成功', icon: 'success' })
-          setTimeout(() => {
-            uni.switchTab({ url: '/pages/index/index' })
-          }, 1000)
-        } else {
-          uni.showToast({ title: result.message || '登录失败', icon: 'none' })
-        }
-      } catch (e) {
-        uni.hideLoading()
-        uni.showToast({ title: '登录失败，请重试', icon: 'none' })
-      }
-    },
-    fail: () => {
-      uni.showToast({ title: '请允许授权', icon: 'none' })
-    }
-  })
-  // #endif
-
-  // #ifdef H5
-  uni.showLoading({ title: '登录中...' })
-  setTimeout(async () => {
-    const result = await wechatLogin({
-      nickname: '游客用户',
-      avatar: ''
-    })
-    uni.hideLoading()
-    if (result.ok) {
-      uni.showToast({ title: '登录成功', icon: 'success' })
-      setTimeout(() => {
-        uni.switchTab({ url: '/pages/index/index' })
-      }, 1000)
-    }
-  }, 500)
-  // #endif
 }
 
 // 显示用户协议
@@ -378,41 +310,6 @@ $text-muted: #999999;
   &[disabled] {
     opacity: 0.6;
   }
-}
-
-.login-btn--wechat {
-  background: #07C160;
-  box-shadow: 0 8rpx 24rpx rgba(7, 193, 96, 0.3);
-  font-size: 28rpx;
-
-  .login-icon {
-    font-size: 36rpx;
-    margin-right: 8rpx;
-  }
-
-  .login-text {
-    font-weight: 500;
-  }
-}
-
-/* 分隔线 */
-.divider {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-  margin: 16rpx 0;
-}
-
-.divider-line {
-  flex: 1;
-  height: 1rpx;
-  background: #e5e5e5;
-}
-
-.divider-text {
-  font-size: 24rpx;
-  color: $text-muted;
-  white-space: nowrap;
 }
 
 /* 用户协议 */
