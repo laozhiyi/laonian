@@ -52,8 +52,8 @@
       <view class="feature-grid">
         <view class="feature-card" v-for="menu in menuList" :key="menu.key" @tap="onMenuTap(menu)">
           <view class="feature-card__icon-wrap">
-            <text v-if="menu.key === 'orders'" class="icon-text icon-text--order">📋</text>
-            <text v-else-if="menu.key === 'address'" class="icon-text icon-text--address">📍</text>
+            <text v-if="menu.key === 'courses'" class="icon-text icon-text--order">📚</text>
+            <text v-else-if="menu.key === 'profile'" class="icon-text icon-text--address">👤</text>
           </view>
           <text class="feature-card__label">{{ menu.name }}</text>
         </view>
@@ -67,8 +67,8 @@
             <text class="icon-text icon-text--admin">⚙️</text>
           </view>
           <view class="admin-card__content">
-            <text class="admin-card__title">商品管理</text>
-            <text class="admin-card__desc">管理商品库存和上下架</text>
+            <text class="admin-card__title">课程管理</text>
+            <text class="admin-card__desc">管理课程和分类</text>
           </view>
         </view>
       </view>
@@ -103,7 +103,7 @@
 
       <!-- 底部品牌 -->
       <view class="brand-footer">
-        <text class="brand-footer__text">橘上生香 · Orange Fragrance</text>
+        <text class="brand-footer__text">橘上·智学学堂 · Orange Wisdom</text>
         <text class="brand-footer__version">v1.0.0</text>
       </view>
 
@@ -149,8 +149,8 @@ onShow(() => {
 
 // ========== 菜单列表 ==========
 const menuList = ref([
-  { key: 'orders', name: '我的订单' },
-  { key: 'address', name: '收货地址' },
+  { key: 'courses', name: '我的课程' },
+  { key: 'profile', name: '个人信息' },
 ])
 
 // ========== 交互方法 ==========
@@ -192,13 +192,26 @@ const onMenuTap = (menu) => {
     goLogin()
     return
   }
-  if (menu.key === 'orders') {
-    uni.navigateTo({ url: '/pages/order/orders' })
-  } else if (menu.key === 'address') {
-    uni.navigateTo({ url: '/pages/address/address' })
+  if (menu.key === 'courses') {
+    // 跳转到外部课程页面
+    uni.navigateTo({ url: '/pages/external-course/list' })
+  } else if (menu.key === 'profile') {
+    // 跳转到个人信息页面（目前没有单独的页面，显示用户信息弹窗）
+    showProfileModal()
   } else {
     toast('功能开发中')
   }
+}
+
+// 显示个人信息弹窗
+const showProfileModal = () => {
+  if (!userInfo.value) return
+  const info = userInfo.value
+  uni.showModal({
+    title: '个人信息',
+    content: `用户名：${info.username || '未设置'}\n角色：${info.role === 'admin' ? '管理员' : '普通用户'}\n注册时间：${info.created_at ? new Date(info.created_at).toLocaleDateString() : '未知'}`,
+    showCancel: false
+  })
 }
 
 const goAdmin = () => {
@@ -208,7 +221,7 @@ const goAdmin = () => {
 const onAboutTap = () => {
   uni.showModal({
     title: '关于我们',
-    content: '橘上生香\n\n优质农特产品电商平台\n\n我们致力于将优质柑橘产品带给每一位用户，每一份产品都承载着果农的辛勤与希望。',
+    content: '橘上·智学学堂\n\n专注老年教育服务\n\n为老年人提供丰富的在线学习资源，涵盖健康养生、文化艺术、数字技能等多领域课程。\n\n让每一位老年人都能享受学习的乐趣，活出精彩人生。',
     showCancel: false
   })
 }
@@ -216,7 +229,7 @@ const onAboutTap = () => {
 const onContactTap = () => {
   uni.showModal({
     title: '联系客服',
-    content: '客服电话：400-188-8888\n工作时间：8:30-20:30\n\n商务合作：bd@jushangshengxiang.com',
+    content: '客服电话：400-188-8888\n工作时间：8:30-20:30\n\n服务邮箱：service@jushangzhixue.com\n商务合作：bd@jushangzhixue.com',
     showCancel: false
   })
 }

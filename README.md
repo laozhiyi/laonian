@@ -38,27 +38,81 @@
 ## 📂 项目结构
 
 ```
-uni-preset-vue-vite/
-├── src/
-│   ├── pages/            # 页面组件
-│   │   ├── index/        # 首页
-│   │   ├── mall/         # 商城
-│   │   ├── me/           # 个人中心
-│   │   ├── auth/         # 登录注册
-│   │   ├── product/      # 商品详情
-│   │   ├── admin/        # 管理员页面
-│   │   ├── order/        # 订单相关
-│   │   ├── address/      # 地址管理
-│   │   └── checkout/     # 结算页面
-│   ├── components/       # 公共组件
-│   ├── utils/            # 工具函数
-│   ├── static/           # 静态资源
-│   ├── App.vue           # 应用入口
-│   ├── main.js           # JS 入口
-│   └── manifest.json     # 应用配置
-├── public/               # 公共资源
-├── vite.config.js        # Vite 配置
-└── package.json          # 项目依赖
+xiaochengxu2/
+├── src/                          # 前端源码 (UniApp + Vue 3)
+│   ├── pages/                    # 页面组件
+│   │   ├── index/                # 首页
+│   │   ├── mall/                 # 商城页
+│   │   ├── me/                   # 个人中心
+│   │   ├── auth/                 # 登录注册
+│   │   ├── product/              # 商品详情
+│   │   ├── admin/                # 管理员页面
+│   │   ├── order/                # 订单相关
+│   │   ├── address/              # 地址管理
+│   │   ├── checkout/             # 结算页面
+│   │   └── external-course/      # 外部课程详情
+│   ├── components/               # 公共组件
+│   ├── utils/                    # 工具函数
+│   │   ├── request.js            # 请求封装
+│   │   ├── cloud-db.js           # 云数据库操作
+│   │   ├── cache.js              # 缓存工具
+│   │   ├── user.js               # 用户相关
+│   │   ├── product.js            # 商品相关
+│   │   ├── cart.js               # 购物车相关
+│   │   ├── order.js              # 订单相关
+│   │   ├── address.js            # 地址相关
+│   │   ├── course.js             # 课程相关
+│   │   └── external-course.js    # 外部课程相关
+│   ├── static/                   # 静态资源
+│   │   ├── tabbar/               # TabBar 图标
+│   │   └── covers/               # 课程封面图片
+│   ├── App.vue                   # 应用入口
+│   ├── main.js                   # JS 入口
+│   ├── manifest.json             # 应用配置
+│   ├── pages.json                # 页面配置
+│   └── uni.scss                  # 全局样式
+├── public/                       # 公共资源
+├── backend/                      # 后端服务 (FastAPI)
+│   ├── app/
+│   │   ├── __init__.py           # 应用初始化
+│   │   ├── database.py           # 数据库配置
+│   │   ├── models/               # 数据模型
+│   │   │   ├── user.py           # 用户模型
+│   │   │   ├── product.py        # 商品模型
+│   │   │   ├── cart.py           # 购物车模型
+│   │   │   ├── order.py          # 订单模型
+│   │   │   ├── address.py        # 地址模型
+│   │   │   ├── course.py         # 课程模型
+│   │   │   └── external_course.py # 外部课程模型
+│   │   ├── routers/              # API 路由
+│   │   │   ├── user.py           # 用户接口
+│   │   │   ├── product.py        # 商品接口
+│   │   │   ├── cart.py           # 购物车接口
+│   │   │   ├── order.py          # 订单接口
+│   │   │   ├── address.py        # 地址接口
+│   │   │   ├── course.py         # 课程接口
+│   │   │   └── external_course.py # 外部课程接口
+│   │   ├── schemas/              # 数据验证模型
+│   │   └── types/                # 类型定义
+│   ├── data/                     # SQLite 数据库文件
+│   ├── config.py                 # 配置文件
+│   ├── main.py                   # FastAPI 主入口
+│   ├── init_db.py                # 数据库初始化
+│   ├── seed.py                   # 测试数据
+│   ├── seed_external_courses.py  # 外部课程测试数据
+│   ├── migrate_external_courses.py # 外部课程迁移脚本
+│   ├── migrate_video_field.py     # 视频字段迁移脚本
+│   ├── requirements.txt           # Python 依赖
+│   ├── start.bat                 # Windows 启动脚本
+│   └── start.sh                  # macOS/Linux 启动脚本
+├── uniCloud-aliyun/              # uniCloud 配置
+│   └── database/                 # 云数据库 schema
+├── docs/                         # 项目文档
+├── node_modules/                 # 依赖包
+├── vite.config.js                # Vite 配置
+├── package.json                  # 项目依赖
+├── pyrightconfig.json            # Python 类型检查配置
+└── README.md                     # 项目说明
 ```
 
 ## 🚀 快速开始
@@ -113,7 +167,46 @@ npm run build:mp-weixin
 | 管理员 | admin | admin |
 | 普通用户 | (自行注册) | (自行设置) |
 
-### uniCloud 配置
+### 本地后端配置
+
+如需使用本地后端替代 uniCloud 云数据库，按以下步骤操作：
+
+**1. 安装 Python 依赖**
+
+```bash
+cd backend
+pip install -r requirements.txt
+```
+
+**2. 初始化数据库**
+
+```bash
+python init_db.py    # 创建表结构
+python seed.py       # 添加测试数据
+```
+
+**3. 启动后端服务**
+
+```bash
+# 方式一：使用脚本（Windows）
+start.bat
+
+# 方式二：命令行启动
+python main.py
+python -m uvicorn main:app --reload --port 8000
+# 常用参数：
+python main.py -p 9000          # 指定端口 9000
+python main.py -H 127.0.0.1     # 仅本地访问
+python main.py -r               # 启用热更新
+python main.py -r -p 9000       # 热更新 + 指定端口
+```
+
+
+**6. 前端配置**
+
+修改 `src/utils/cloud-db.js`，将 `BASE_URL` 改为 `http://localhost:8000`（已在代码中配置）。
+
+### uniCloud 配置（可选）
 
 1. 在 HBuilderX 中创建 uniCloud 项目
 2. 关联阿里云服务空间

@@ -27,12 +27,12 @@
         <view class="hero-card__content">
           <view class="hero-badge">
             <view class="hero-badge__dot"></view>
-            <text>新鲜直达</text>
+            <text>精品课程</text>
           </view>
-          <text class="hero-title">自然之味</text>
-          <text class="hero-subtitle">从果园到餐桌，只为给你最好的</text>
+          <text class="hero-title">学无止境</text>
+          <text class="hero-subtitle">专业讲师倾情授课，从入门到精通</text>
           <view class="hero-cta" @tap="goMall">
-            <text>探索好物</text>
+            <text>探索课程</text>
             <text class="hero-cta__arrow">→</text>
           </view>
         </view>
@@ -76,20 +76,20 @@
           <view class="story-card__badge">品牌故事</view>
           <text class="story-card__title">橘上生香</text>
           <text class="story-card__desc">
-            源于对自然的热爱与对农产品的执着，我们与全国500+优质果农建立直供合作关系，从源头把控品质，让每一位消费者都能享受到新鲜、美味、健康的农产品。
+            我们汇集了各领域资深讲师，精心打造从入门到精通的系统课程。涵盖编程开发、UI设计、数据分析、人工智能等多个热门方向，帮助每一位学员实现职业成长。
           </text>
           <view class="story-stats">
             <view class="story-stat">
-              <text class="story-stat__value">500+</text>
-              <text class="story-stat__label">合作果农</text>
+              <text class="story-stat__value">100+</text>
+              <text class="story-stat__label">精品课程</text>
             </view>
             <view class="story-stat">
-              <text class="story-stat__value">10万+</text>
-              <text class="story-stat__label">用户好评</text>
+              <text class="story-stat__value">5万+</text>
+              <text class="story-stat__label">学员好评</text>
             </view>
             <view class="story-stat">
-              <text class="story-stat__value">30+</text>
-              <text class="story-stat__label">产品种类</text>
+              <text class="story-stat__value">50+</text>
+              <text class="story-stat__label">专业讲师</text>
             </view>
           </view>
         </view>
@@ -170,7 +170,7 @@
 
       <!-- 底部品牌 -->
       <view class="brand-footer">
-        <text class="brand-footer__text">橘上生香 · Orange Fragrance</text>
+        <text class="brand-footer__text">学无止境 · Learn More</text>
         <text class="brand-footer__version">v1.0.0</text>
       </view>
 
@@ -225,7 +225,7 @@ const goAdmin = () => {
 const onAboutTap = () => {
   uni.showModal({
     title: '关于我们',
-    content: '橘上生香\n\n优质农特产品电商平台\n\n我们致力于将优质柑橘产品带给每一位用户，每一份产品都承载着果农的辛勤与希望。',
+    content: '学无止境在线教育平台\n\n专业的在线课程学习平台\n\n我们汇聚行业精英，打造精品课程，帮助学员实现技能提升与职业发展。',
     showCancel: false
   })
 }
@@ -233,7 +233,7 @@ const onAboutTap = () => {
 const onContactTap = () => {
   uni.showModal({
     title: '联系客服',
-    content: '客服电话：400-188-8888\n工作时间：8:30-20:30\n\n商务合作：bd@jushangshengxiang.com',
+    content: '客服电话：400-188-8888\n工作时间：8:30-20:30\n\n商务合作：bd@xuewuzhijing.com',
     showCancel: false
   })
 }

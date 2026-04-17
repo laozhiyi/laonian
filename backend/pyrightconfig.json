@@ -1,0 +1,11 @@
+{
+    "include": ["app", "types"],
+    "stubPath": "app/types",
+    "extraPaths": ["E:\\conda\\Lib\\site-packages"],
+    "pythonVersion": "3.11",
+    "typeCheckingLevel": "basic",
+    "reportMissingTypeStubs": false,
+    "reportUnknownMemberType": false,
+    "reportUnknownVariableType": false,
+    "reportUnknownParameterType": false
+}

@@ -1,12 +1,87 @@
 /**
- * uniCloud 数据库基础封装
+ * 后端 API 封装（FastAPI 本地后端版）
+ * 
+ * H5 开发环境使用 Vite 代理 (/api -> http://localhost:8000)
+ * 小程序/APP 环境直接使用后端地址
  */
 
+// 检测是否在浏览器环境中（H5）
+const isBrowser = typeof window !== 'undefined'
+
+// 根据环境选择基础URL
+function getBaseUrl() {
+  // H5 开发环境使用相对路径，让 Vite 代理处理
+  if (isBrowser) {
+    return ''  // 相对路径，Vite 会代理 /api 到 localhost:8000
+  }
+  // 其他环境（小程序、APP）直接使用后端地址
+  return 'http://localhost:8000'
+}
+
+const BASE_URL = getBaseUrl()
+
+// 获取存储的用户信息
+function getStoredUser() {
+  try {
+    const user = uni.getStorageSync('current_user')
+    return user ? JSON.parse(user) : null
+  } catch {
+    return null
+  }
+}
+
+// 通用请求函数
+export async function request(method, path, data = null) {
+  const user = getStoredUser()
+  const headers = {
+    'Content-Type': 'application/json',
+  }
+  
+  // 如果有登录用户，传递用户ID
+  if (user && user.id) {
+    headers['X-User-Id'] = String(user.id)
+  }
+  
+  let url = BASE_URL + path
+  const options = {
+    method,
+    headers,
+    url,  // 必须包含 url
+  }
+  
+  if (data && (method === 'POST' || method === 'PUT')) {
+    options.body = JSON.stringify(data)
+  } else if (data && method === 'GET') {
+    const query = new URLSearchParams(data).toString()
+    if (query) url += '?' + query
+  }
+  
+  try {
+    const res = await uni.request(options)
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      return res.data
+    } else {
+      console.error(`请求失败 [${res.statusCode}]:`, res.data)
+      throw new Error(res.data?.detail || `请求失败 (${res.statusCode})`)
+    }
+  } catch (error) {
+    console.error('请求错误:', error)
+    throw error
+  }
+}
+
 /**
- * 获取数据库实例
+ * 获取数据库实例（兼容旧代码）
  */
 export function getDB() {
-  return uniCloud.database()
+  return {
+    collection: (name) => ({
+      get: async () => ({ result: { data: null } }),
+      add: async (data) => ({ result: { id: null } }),
+      update: async (data) => ({ result: { updated: 0 } }),
+      remove: async () => ({ result: { deleted: 0 } }),
+    })
+  }
 }
 
 /**
@@ -14,17 +89,8 @@ export function getDB() {
  */
 export async function dbGet(collection, id) {
   try {
-    const db = getDB()
-    // 确保ID是字符串
-    const docId = String(id)
-    const res = await db.collection(collection).doc(docId).get()
-    // uniCloud 返回格式处理
-    if (res && res.result) {
-      // JQL 模式返回格式: { result: { data: {...} } }
-      return res
-    }
-    // 其他情况直接返回
-    return res
+    const res = await request('GET', `/api/${collection}s/${id}`)
+    return { result: { data: res.data } }
   } catch (error) {
     console.error('dbGet error:', error)
     return { result: { data: null } }
@@ -35,28 +101,45 @@ export async function dbGet(collection, id) {
  * 添加记录
  */
 export async function dbAdd(collection, data) {
-  const db = getDB()
-  return db.collection(collection).add(data)
+  try {
+    const path = collection === 'cart' ? '/api/cart/add' : `/api/${collection}s`
+    const res = await request('POST', path, data)
+    return { result: { id: res.id } }
+  } catch (error) {
+    console.error('dbAdd error:', error)
+    return { result: { id: null } }
+  }
 }
 
 /**
  * 更新记录
  */
 export async function dbUpdate(collection, id, data) {
-  const db = getDB()
-  // 确保ID是字符串
-  const docId = String(id)
-  return db.collection(collection).doc(docId).update(data)
+  try {
+    // cart 使用 PUT /{item_id}?quantity=xxx
+    if (collection === 'cart') {
+      await request('PUT', `/api/cart/${id}?quantity=${data.quantity}`)
+    } else {
+      await request('PUT', `/api/${collection}s/${id}`, data)
+    }
+    return { result: { updated: 1 } }
+  } catch (error) {
+    console.error('dbUpdate error:', error)
+    return { result: { updated: 0 } }
+  }
 }
 
 /**
  * 删除记录
  */
 export async function dbRemove(collection, id) {
-  const db = getDB()
-  // 确保ID是字符串
-  const docId = String(id)
-  return db.collection(collection).doc(docId).remove()
+  try {
+    await request('DELETE', `/api/${collection}s/${id}`)
+    return { result: { deleted: 1 } }
+  } catch (error) {
+    console.error('dbRemove error:', error)
+    return { result: { deleted: 0 } }
+  }
 }
 
 /**
@@ -64,25 +147,23 @@ export async function dbRemove(collection, id) {
  */
 export async function dbWhere(collection, condition, options = {}) {
   try {
-    const db = getDB()
-    let query = db.collection(collection).where(condition)
-
-    if (options.orderBy) {
-      query = query.orderBy(options.orderBy.field, options.orderBy.direction)
+    // 构建查询参数
+    const params = { ...condition }
+    
+    // 特殊处理：用户查询
+    if (condition.userId) {
+      params.x_user_id = String(condition.userId)
     }
-    if (options.skip) {
-      query = query.skip(options.skip)
+    
+    const res = await request('GET', `/api/${collection}s`, params)
+    
+    // 统一返回格式
+    let data = res.list || res.data || []
+    if (!Array.isArray(data)) {
+      data = [data]
     }
-    if (options.limit) {
-      query = query.limit(options.limit)
-    }
-
-    const res = await query.get()
-    // uniCloud 返回格式处理
-    if (res && res.result) {
-      return res
-    }
-    return res
+    
+    return { result: { data } }
   } catch (error) {
     console.error('dbWhere error:', error)
     return { result: { data: [] } }
@@ -90,14 +171,14 @@ export async function dbWhere(collection, condition, options = {}) {
 }
 
 /**
- * 上传文件
+ * 上传文件（简化版，返回占位符）
  */
 export async function uploadFile(filePath, cloudPath) {
-  const client = uniCloud.uploadFile({
-    filePath: filePath,
-    cloudPath: cloudPath,
-  })
-  return client
+  console.log('uploadFile (模拟):', filePath, cloudPath)
+  return {
+    success: true,
+    fileID: 'mock_' + Date.now()
+  }
 }
 
 export default {

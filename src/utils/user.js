@@ -1,13 +1,26 @@
 /**
- * 用户模块 API（uniCloud 云数据库版）
+ * 用户模块 API
+ * 直接调用后端 FastAPI
  */
 
-import { dbAdd, dbWhere, dbUpdate, dbGet } from './cloud-db.js'
+const BASE_URL = 'http://localhost:8000'
 
-// 常量
-const USERS_COLLECTION = 'users'
+// 获取可用的 API 地址（支持在 localStorage 中覆盖）
+function getApiBaseUrl() {
+  const customUrl = uni.getStorageSync('api_base_url')
+  return customUrl || BASE_URL
+}
 
-// 获取当前用户信息（从本地存储）
+// 设置自定义 API 地址（用于真机调试）
+export function setApiBaseUrl(url) {
+  if (url) {
+    uni.setStorageSync('api_base_url', url)
+  } else {
+    uni.removeStorageSync('api_base_url')
+  }
+}
+
+// 获取存储的用户信息
 export function getCurrentUser() {
   try {
     const user = uni.getStorageSync('current_user')
@@ -28,46 +41,79 @@ function clearCurrentUser() {
   uni.removeStorageSync('demo_token')
 }
 
+// 通用请求函数
+async function apiRequest(method, path, data = null) {
+  const user = getCurrentUser()
+  const headers = {
+    'Content-Type': 'application/json',
+  }
+  
+  if (user && user.id) {
+    headers['X-User-Id'] = String(user.id)
+  }
+  
+  let url = getApiBaseUrl() + path
+  const options = {
+    method,
+    headers,
+    timeout: 15000, // 15秒超时
+  }
+  
+  if (data && (method === 'POST' || method === 'PUT')) {
+    options.data = data
+  } else if (data && method === 'GET') {
+    const params = new URLSearchParams()
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== undefined && value !== null) {
+        params.append(key, String(value))
+      }
+    }
+    const query = params.toString()
+    if (query) url += '?' + query
+  }
+  
+  try {
+    const res = await uni.request({ ...options, url })
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      return res.data
+    } else {
+      throw new Error(res.data?.detail || `请求失败 (${res.statusCode})`)
+    }
+  } catch (error) {
+    // 区分超时错误和其他错误
+    const errMsg = error.errMsg || error.message || ''
+    if (errMsg.includes('timeout')) {
+      throw new Error('请求超时，请检查网络或服务器是否运行')
+    }
+    if (errMsg.includes('request:fail')) {
+      throw new Error('网络请求失败，请检查网络连接')
+    }
+    console.error('请求错误:', error)
+    throw error
+  }
+}
+
 /**
  * 用户注册
  */
 export async function registerUser({ username, password, role = 'user' }) {
   try {
-    // 检查用户名是否已存在
-    const checkRes = await dbWhere(USERS_COLLECTION, {
-      username: username.trim().toLowerCase()
-    })
-
-    if (checkRes.result.data && checkRes.result.data.length > 0) {
-      return { ok: false, message: '用户名已存在' }
-    }
-
-    const now = Date.now()
-    const userData = {
-      username: username.trim().toLowerCase(),
+    const res = await apiRequest('POST', '/api/users/register', {
+      username: username.trim(),
       password: password.trim(),
-      role: role,
-      createdAt: now,
-      updatedAt: now
+      role: role
+    })
+    
+    if (res.ok && res.user) {
+      saveCurrentUser(res.user)
+      uni.setStorageSync('demo_token', 'local_' + res.user.username + '_' + Date.now())
+      return { ok: true, user: res.user }
     }
-
-    const addRes = await dbAdd(USERS_COLLECTION, userData)
-
-    if (addRes.result.id) {
-      const user = {
-        id: addRes.result.id,
-        username: userData.username,
-        role: userData.role
-      }
-      saveCurrentUser(user)
-      uni.setStorageSync('demo_token', 'local_' + userData.username + '_' + now)
-      return { ok: true, user }
-    }
-
-    return { ok: false, message: '注册失败' }
+    
+    return { ok: false, message: res.detail || '注册失败' }
   } catch (error) {
     console.error('注册失败:', error)
-    return { ok: false, message: error.message || '注册失败' }
+    return { ok: false, message: error.message || '注册失败，请检查服务器是否运行' }
   }
 }
 
@@ -76,62 +122,21 @@ export async function registerUser({ username, password, role = 'user' }) {
  */
 export async function loginUser({ username, password }) {
   try {
-    const name = username.trim().toLowerCase()
-    const pwd = password.trim()
-
-    // 默认管理员账号
-    if (name === 'admin' && pwd === 'admin') {
-      // 检查管理员是否存在，不存在则创建
-      const checkRes = await dbWhere(USERS_COLLECTION, { username: 'admin' })
-      let adminId
-
-      if (!checkRes.result.data || checkRes.result.data.length === 0) {
-        const now = Date.now()
-        const adminData = {
-          username: 'admin',
-          password: 'admin',
-          role: 'admin',
-          createdAt: now,
-          updatedAt: now
-        }
-        const addRes = await dbAdd(USERS_COLLECTION, adminData)
-        adminId = addRes.result.id
-      } else {
-        adminId = checkRes.result.data[0]._id
-      }
-
-      const user = {
-        id: adminId,
-        username: 'admin',
-        role: 'admin'
-      }
-      saveCurrentUser(user)
-      uni.setStorageSync('demo_token', 'local_admin_' + Date.now())
-      return { ok: true, user }
-    }
-
-    // 普通用户登录
-    const loginRes = await dbWhere(USERS_COLLECTION, {
-      username: name,
-      password: pwd
+    const res = await apiRequest('POST', '/api/users/login', {
+      username: username.trim(),
+      password: password.trim()
     })
-
-    if (loginRes.result.data && loginRes.result.data.length > 0) {
-      const userData = loginRes.result.data[0]
-      const user = {
-        id: userData._id,
-        username: userData.username,
-        role: userData.role
-      }
-      saveCurrentUser(user)
-      uni.setStorageSync('demo_token', 'local_' + name + '_' + Date.now())
-      return { ok: true, user }
+    
+    if (res.ok && res.user) {
+      saveCurrentUser(res.user)
+      uni.setStorageSync('demo_token', 'local_' + res.user.username + '_' + Date.now())
+      return { ok: true, user: res.user }
     }
-
-    return { ok: false, message: '用户名或密码错误' }
+    
+    return { ok: false, message: res.detail || '登录失败' }
   } catch (error) {
     console.error('登录失败:', error)
-    return { ok: false, message: error.message || '登录失败' }
+    return { ok: false, message: error.message || '登录失败，请检查服务器是否运行' }
   }
 }
 
@@ -148,26 +153,11 @@ export async function logout() {
  */
 export async function getUserInfo(userId) {
   try {
-    const res = await dbGet(USERS_COLLECTION, userId)
-    if (res.result.data) {
-      return { ok: true, data: res.result.data }
+    const res = await apiRequest('GET', `/api/users/${userId}`)
+    if (res.ok) {
+      return { ok: true, data: res.data }
     }
-    return { ok: false, message: '用户不存在' }
-  } catch (error) {
-    return { ok: false, message: error.message }
-  }
-}
-
-/**
- * 更新用户信息
- */
-export async function updateUserInfo(userId, data) {
-  try {
-    await dbUpdate(USERS_COLLECTION, userId, {
-      ...data,
-      updatedAt: Date.now()
-    })
-    return { ok: true, message: '更新成功' }
+    return { ok: false, message: res.detail || '用户不存在' }
   } catch (error) {
     return { ok: false, message: error.message }
   }

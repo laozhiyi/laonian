@@ -72,6 +72,19 @@
 			"style": {
 				"navigationStyle": "custom"
 			}
+		},
+		{
+			"path": "pages/external-course/list",
+			"style": {
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/external-course/detail",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "课程介绍"
+			}
 		}
 	],
 	"globalStyle": {

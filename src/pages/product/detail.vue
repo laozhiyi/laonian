@@ -1,46 +1,62 @@
 <template>
   <view class="page">
-    <!-- 商品不存在 -->
+    <!-- 课程不存在 -->
     <view class="empty-page" v-if="productNotFound">
-      <view class="empty-icon">📦</view>
-      <text class="empty-text">商品不存在</text>
+      <view class="empty-icon">📭</view>
+      <text class="empty-text">课程不存在</text>
       <view class="btn-back" @tap="goMall">返回商城</view>
     </view>
 
-    <!-- 商品图片 -->
+    <!-- 课程封面图 -->
     <view class="cover-wrap" v-else>
       <image class="cover" :src="product?.cover" mode="aspectFill" />
       <view class="back-btn" @tap="goBack">‹</view>
+      <!-- 难度标签 -->
+      <view class="level-badge" v-if="product.level">{{ product.level }}</view>
     </view>
 
-    <!-- 商品信息 -->
+    <!-- 课程信息 -->
     <scroll-view class="scroll" scroll-y v-if="product && !productNotFound">
       <view class="info-wrap">
         <!-- 价格 -->
         <view class="price-row">
           <text class="price-symbol">¥</text>
-          <text class="price-value">{{ (product.priceNow || 0).toFixed(2) }}</text>
-          <text v-if="product.priceOrigin" class="price-origin">¥{{ (product.priceOrigin || 0).toFixed(2) }}</text>
-        </view>
-
-        <!-- 库存 -->
-        <view class="stock-row" v-if="product.stock !== undefined">
-          <text class="stock-label">库存:</text>
-          <text class="stock-value">{{ product.stock }}</text>
+          <text class="price-value">{{ (product.priceNow || product.price || 0).toFixed(0) }}</text>
+          <text class="price-original" v-if="product.price > product.priceNow">¥{{ (product.price || 0).toFixed(0) }}</text>
         </view>
 
         <!-- 标题 -->
-        <view class="title">{{ product.title || '商品标题' }}</view>
+        <view class="title">{{ product.title || '课程标题' }}</view>
 
-        <!-- 标签 -->
+        <!-- 课程元信息 -->
+        <view class="meta-row">
+          <view class="meta-item" v-if="product.instructor">
+            <text class="meta-icon">👨‍🏫</text>
+            <text class="meta-text">{{ product.instructor }}</text>
+          </view>
+          <view class="meta-item" v-if="product.rating">
+            <text class="meta-icon">⭐</text>
+            <text class="meta-text">{{ product.rating }}</text>
+          </view>
+          <view class="meta-item" v-if="product.studentCount">
+            <text class="meta-icon">👥</text>
+            <text class="meta-text">{{ formatCount(product.studentCount) }}人在学</text>
+          </view>
+          <view class="meta-item" v-if="product.duration">
+            <text class="meta-icon">⏱️</text>
+            <text class="meta-text">{{ product.duration }}</text>
+          </view>
+        </view>
+
+        <!-- 分类标签 -->
         <view class="tags" v-if="product.tags && product.tags.length > 0">
           <text class="tag" v-for="tag in product.tags" :key="tag">#{{ tag }}</text>
         </view>
 
-        <!-- 商品描述 -->
+        <!-- 课程描述 -->
         <view class="desc-section">
-          <view class="desc-title">商品详情</view>
-          <view class="desc-content">{{ product.description || '暂无描述' }}</view>
+          <view class="desc-title">课程介绍</view>
+          <view class="desc-content">{{ product.desc || product.description || '暂无介绍' }}</view>
         </view>
       </view>
     </scroll-view>
@@ -50,24 +66,29 @@
       <view class="cart-icon" @tap="goMall">
         <text class="icon-text icon-text--cart">🛒</text>
       </view>
-      <view class="btn-primary" @tap="addToCart">加入购物车</view>
+      <view class="btn-primary" @tap="addToCart">立即学习</view>
     </view>
   </view>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { getProductDetail } from '@/utils/product.js'
+import { getCourseDetail } from '@/utils/course.js'
 import { addToCart as apiAddToCart, saveToLocalCart } from '@/utils/cart.js'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 
-// ========== 商品数据 ==========
 const productId = ref('')
 const product = ref(null)
 const productNotFound = ref(false)
 const productLoading = ref(false)
 
-// ========== 交互方法 ==========
+const formatCount = (num) => {
+  if (num >= 10000) {
+    return (num / 10000).toFixed(1) + '万'
+  }
+  return num > 0 ? num : '0'
+}
+
 const toast = (title) => {
   uni.showToast({ title, icon: 'none' })
 }
@@ -87,25 +108,21 @@ const goMall = () => {
 
 const addToCart = async () => {
   if (!product.value || productNotFound.value) {
-    toast('商品不存在')
+    toast('课程不存在')
     return
   }
-  // 获取商品ID
   const pid = product.value._id || product.value.id
   if (!pid) {
-    toast('商品信息不完整')
+    toast('课程信息不完整')
     return
   }
-  // 先尝试调用API
   const res = await apiAddToCart({ id: pid, ...product.value })
   if (!res.ok) {
-    // API失败时使用本地存储
     saveToLocalCart({ id: pid, ...product.value })
   }
-  toast('已加入购物车')
+  toast('已加入学习计划')
 }
 
-// ========== 加载商品 ==========
 const loadProduct = async () => {
   if (!productId.value || productLoading.value) return
 
@@ -113,8 +130,7 @@ const loadProduct = async () => {
   productNotFound.value = false
 
   try {
-    // 直接获取单个商品详情
-    const res = await getProductDetail(productId.value)
+    const res = await getCourseDetail(productId.value)
     if (res.ok && res.data) {
       product.value = {
         ...res.data,
@@ -125,14 +141,13 @@ const loadProduct = async () => {
       productNotFound.value = true
     }
   } catch (e) {
-    console.error('加载商品失败:', e)
+    console.error('加载课程失败:', e)
     productNotFound.value = true
   } finally {
     productLoading.value = false
   }
 }
 
-// ========== onLoad 获取参数 ==========
 onLoad((options) => {
   productId.value = options?.id || ''
   if (productId.value) {
@@ -142,41 +157,22 @@ onLoad((options) => {
   }
 })
 
-// ========== onShow 刷新商品数据 ==========
 onShow(() => {
-  // 每次显示时刷新商品数据
   loadProduct()
 })
 </script>
 
 <style lang="scss" scoped>
-$primary: #FF9000;
-$primary-light: #FFB347;
+$primary: #FF6B35;
+$primary-light: #FF9F5A;
 $text: #2B2B2B;
 $text-body: #5A5A5A;
 $sub: #999999;
 $bg: #FFFAF5;
 
-// 动画定义
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
 @keyframes slideUp {
   from { transform: translateY(40rpx); }
   to { transform: translateY(0); }
-}
-
-@keyframes pulse-ring {
-  0% {
-    transform: scale(0.8);
-    opacity: 0.5;
-  }
-  100% {
-    transform: scale(1.2);
-    opacity: 0;
-  }
 }
 
 .page {
@@ -185,7 +181,6 @@ $bg: #FFFAF5;
   position: relative;
 }
 
-/* 空状态页面 */
 .empty-page {
   display: flex;
   flex-direction: column;
@@ -215,10 +210,9 @@ $bg: #FFFAF5;
   font-weight: 600;
 }
 
-/* 商品图片 */
 .cover-wrap {
   position: relative;
-  height: 680rpx;
+  height: 600rpx;
 }
 
 .cover {
@@ -240,28 +234,28 @@ $bg: #FFFAF5;
   justify-content: center;
   font-size: 48rpx;
   color: $text;
-  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.12),
-              0 2rpx 8rpx rgba(0, 0, 0, 0.05);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.12);
   z-index: 10;
 
   &:active {
     transform: scale(0.9);
-    background: rgba(255, 255, 255, 1);
-  }
-
-  &::before {
-    content: '';
-    position: absolute;
-    inset: -6rpx;
-    border-radius: 50%;
-    border: 2rpx solid rgba(255, 255, 255, 0.5);
   }
 }
 
-/* 滚动区域 */
+.level-badge {
+  position: absolute;
+  right: 32rpx;
+  bottom: 32rpx;
+  padding: 12rpx 24rpx;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 16rpx;
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #fff;
+}
+
 .scroll {
-  height: calc(100vh - 560rpx);
+  height: calc(100vh - 480rpx);
 }
 
 .info-wrap {
@@ -269,25 +263,22 @@ $bg: #FFFAF5;
   border-radius: 48rpx 48rpx 0 0;
   margin-top: -40rpx;
   position: relative;
-  padding: 48rpx 32rpx 200rpx;
-  box-shadow: 0 -8rpx 40rpx rgba(0, 0, 0, 0.08),
-              0 -2rpx 16rpx rgba(0, 0, 0, 0.03);
+  padding: 48rpx 32rpx 180rpx;
+  box-shadow: 0 -8rpx 40rpx rgba(0, 0, 0, 0.08);
   animation: slideUp 0.5s ease-out;
 }
 
-/* 价格 */
 .price-row {
   display: flex;
   align-items: baseline;
-  gap: 16rpx;
-  margin-bottom: 28rpx;
+  gap: 8rpx;
+  margin-bottom: 20rpx;
 }
 
 .price-symbol {
   font-size: 36rpx;
   color: $primary;
   font-weight: 600;
-  text-shadow: 0 2rpx 8rpx rgba(255, 144, 0, 0.2);
 }
 
 .price-value {
@@ -295,74 +286,64 @@ $bg: #FFFAF5;
   color: $primary;
   font-weight: 800;
   letter-spacing: -2rpx;
-  text-shadow: 0 4rpx 16rpx rgba(255, 144, 0, 0.3);
-  background: linear-gradient(135deg, $primary, $primary-light);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
 }
 
-.price-origin {
+.price-original {
   font-size: 28rpx;
   color: $sub;
   text-decoration: line-through;
-  margin-left: 12rpx;
-  font-weight: 400;
+  margin-left: 8rpx;
 }
 
-/* 库存 */
-.stock-row {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  margin-bottom: 24rpx;
-  padding: 12rpx 20rpx;
-  background: linear-gradient(135deg, rgba(76, 175, 80, 0.08), rgba(76, 175, 80, 0.03));
-  border-radius: 16rpx;
-  width: fit-content;
-}
-
-.stock-label {
-  font-size: 26rpx;
-  color: $sub;
-}
-
-.stock-value {
-  font-size: 26rpx;
-  color: #4CAF50;
-  font-weight: 600;
-}
-
-/* 标题 */
 .title {
   font-size: 36rpx;
   font-weight: 700;
   color: $text;
   line-height: 1.5;
   margin-bottom: 24rpx;
-  letter-spacing: 0.5rpx;
 }
 
-/* 标签 */
+.meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24rpx;
+  margin-bottom: 24rpx;
+  padding: 20rpx;
+  background: #fafafa;
+  border-radius: 16rpx;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.meta-icon {
+  font-size: 26rpx;
+}
+
+.meta-text {
+  font-size: 26rpx;
+  color: $text-body;
+}
+
 .tags {
   display: flex;
   flex-wrap: wrap;
   gap: 16rpx;
-  margin-bottom: 36rpx;
+  margin-bottom: 32rpx;
 }
 
 .tag {
   padding: 10rpx 20rpx;
   border-radius: 999rpx;
-  background: linear-gradient(135deg, rgba(255, 144, 0, 0.1), rgba(255, 179, 71, 0.08));
+  background: rgba(255, 107, 53, 0.1);
   color: $primary;
   font-size: 24rpx;
   font-weight: 500;
-  letter-spacing: 0.5rpx;
-  border: 1rpx solid rgba(255, 144, 0, 0.2);
 }
 
-/* 描述 */
 .desc-section {
   padding-top: 32rpx;
   border-top: 1rpx solid #f0f0f0;
@@ -392,10 +373,8 @@ $bg: #FFFAF5;
   font-size: 28rpx;
   color: $text-body;
   line-height: 2;
-  letter-spacing: 1rpx;
 }
 
-/* 底部操作栏 */
 .bottom-bar {
   position: fixed;
   left: 0;
@@ -407,20 +386,8 @@ $bg: #FFFAF5;
   align-items: center;
   padding: 0 28rpx;
   padding-bottom: calc(env(safe-area-inset-bottom) + 20rpx);
-  box-shadow: 0 -8rpx 40rpx rgba(0, 0, 0, 0.1),
-              0 -2rpx 16rpx rgba(0, 0, 0, 0.03);
-  border-top: 1rpx solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 -8rpx 40rpx rgba(0, 0, 0, 0.1);
   z-index: 100;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 28rpx;
-    right: 28rpx;
-    height: 1rpx;
-    background: linear-gradient(90deg, transparent, rgba(255, 144, 0, 0.2), transparent);
-  }
 }
 
 .cart-icon {
@@ -432,29 +399,14 @@ $bg: #FFFAF5;
   align-items: center;
   justify-content: center;
   margin-right: 24rpx;
-  box-shadow: 0 8rpx 28rpx rgba(255, 144, 0, 0.4),
-              0 4rpx 14rpx rgba(255, 179, 71, 0.25);
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-
-  &::before {
-    content: '';
-    position: absolute;
-    inset: -4rpx;
-    border-radius: 50%;
-    border: 2rpx solid rgba(255, 144, 0, 0.3);
-    animation: pulse-ring 2s ease-out infinite;
-  }
 
   &:active {
     transform: scale(0.9);
   }
+}
 
-  svg {
-    width: 46rpx;
-    height: 46rpx;
-    color: #fff;
-  }
+.icon-text--cart {
+  font-size: 44rpx;
 }
 
 .btn-primary {
@@ -469,13 +421,10 @@ $bg: #FFFAF5;
   font-size: 34rpx;
   font-weight: 600;
   letter-spacing: 3rpx;
-  box-shadow: 0 8rpx 32rpx rgba(255, 144, 0, 0.4),
-              0 4rpx 16rpx rgba(255, 107, 53, 0.25);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 8rpx 32rpx rgba(255, 107, 53, 0.4);
 
   &:active {
     transform: scale(0.98);
-    box-shadow: 0 4rpx 20rpx rgba(255, 144, 0, 0.3);
   }
 }
 </style>
