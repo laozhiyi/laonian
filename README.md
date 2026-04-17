@@ -1,6 +1,6 @@
-# 🍊 橘上生香 - 柑橘农特产品商城小程序
+# 🍊 橘上生香 - 老年生活服务平台
 
-基于 UniApp + Vue 3 + uniCloud 开发的柑橘农特产品电商小程序
+基于 UniApp + Vue 3 + uniCloud 开发的老年人学习与生活服务小程序
 
 [![UniApp](https://img.shields.io/badge/UniApp-3.0-blue?style=flat-square)](https://uniapp.dcloud.io/)
 [![Vue 3](https://img.shields.io/badge/Vue-3.4-green?style=flat-square)](https://vuejs.org/)
@@ -10,20 +10,31 @@
 
 ## 📱 项目简介
 
-「橘上生香」是一款专为柑橘类农特产品设计的展示与销售小程序，提供完整的商城购物体验。项目仅用于演示和个人学习交流，数据存储在 uniCloud 云服务中。
+「橘上生香」是一款专为老年人设计的学习与生活服务平台，提供丰富的在线课程、便捷的购物体验和贴心的个人服务。让老年生活更加丰富多彩，享受科技带来的便利。
 
 ## ✨ 功能特点
 
+### 课程学习
+- 📚 **丰富课程** - 涵盖健康养生、书法绘画、棋类博弈、烹饪美食、音乐艺术等多个领域
+- 🎥 **视频教学** - 高清视频课程，随时随地学习新技能
+- 📖 **课程分类** - 按类别浏览，快速找到感兴趣的课程
+
 ### 商城功能
-- 🍊 **商品浏览** - 瀑布流展示商品，支持搜索和筛选
+- 🛒 **商品浏览** - 精选商品展示，支持搜索和筛选
 - 🛒 **购物车** - 商品添加、数量修改、清空购物车
-- 📋 **订单管理** - 下单、查看订单状态、确认收货、退货
+- 📋 **订单管理** - 下单、查看订单状态、确认收货
 - 📍 **地址管理** - 收货地址的添加、编辑、删除、设为默认
-- 👤 **个人中心** - 订单列表、地址管理、登录注册
+
+### 个人中心
+- 👤 **用户中心** - 个人信息管理、订单列表、地址管理
+- 📝 **我的课程** - 收藏和管理感兴趣的课程
+- 🔔 **消息通知** - 订单状态、活动通知
 
 ### 管理员功能
 - 📦 **商品管理** - 商品上架、编辑、删除、库存管理
 - 📊 **订单处理** - 查看订单、发货管理
+- 📚 **课程管理** - 课程上架、编辑、删除
+- 📈 **数据统计** - 销售统计、用户统计
 
 ## 🛠 技术栈
 
@@ -34,6 +45,8 @@
 | **Sass** | CSS 预处理器 |
 | **uniCloud** | 云开发 (阿里云) |
 | **Vite** | 构建工具 |
+| **FastAPI** | 后端 API 服务 |
+| **SQLite** | 数据库存储 |
 
 ## 📂 项目结构
 
@@ -50,7 +63,7 @@ xiaochengxu2/
 │   │   ├── order/                # 订单相关
 │   │   ├── address/              # 地址管理
 │   │   ├── checkout/             # 结算页面
-│   │   └── external-course/      # 外部课程详情
+│   │   └── external-course/      # 外部课程（列表+详情）
 │   ├── components/               # 公共组件
 │   ├── utils/                    # 工具函数
 │   │   ├── request.js            # 请求封装
@@ -121,15 +134,17 @@ xiaochengxu2/
 
 - HBuilderX 3.8+ 或 Node.js 18+
 - npm 或 yarn
+- Python 3.8+ (后端)
 
 ### 安装依赖
 
 ```bash
-# 使用 HBuilderX
-# 直接打开项目运行即可
-
-# 或使用命令行
+# 前端依赖
 npm install
+
+# 后端依赖
+cd backend
+pip install -r requirements.txt
 ```
 
 ### 运行项目
@@ -143,6 +158,13 @@ npm run dev:mp-weixin
 
 # App 端
 npm run dev:custom
+```
+
+### 启动后端
+
+```bash
+cd backend
+python main.py
 ```
 
 ### 构建发布
@@ -167,57 +189,24 @@ npm run build:mp-weixin
 | 管理员 | admin | admin |
 | 普通用户 | (自行注册) | (自行设置) |
 
-### 本地后端配置
+### 课程分类
 
-如需使用本地后端替代 uniCloud 云数据库，按以下步骤操作：
-
-**1. 安装 Python 依赖**
-
-```bash
-cd backend
-pip install -r requirements.txt
-```
-
-**2. 初始化数据库**
-
-```bash
-python init_db.py    # 创建表结构
-python seed.py       # 添加测试数据
-```
-
-**3. 启动后端服务**
-
-```bash
-# 方式一：使用脚本（Windows）
-start.bat
-
-# 方式二：命令行启动
-python main.py
-python -m uvicorn main:app --reload --port 8000
-# 常用参数：
-python main.py -p 9000          # 指定端口 9000
-python main.py -H 127.0.0.1     # 仅本地访问
-python main.py -r               # 启用热更新
-python main.py -r -p 9000       # 热更新 + 指定端口
-```
-
-
-**6. 前端配置**
-
-修改 `src/utils/cloud-db.js`，将 `BASE_URL` 改为 `http://localhost:8000`（已在代码中配置）。
-
-### uniCloud 配置（可选）
-
-1. 在 HBuilderX 中创建 uniCloud 项目
-2. 关联阿里云服务空间
-3. 上传 schema 和 cloudfunctions
-4. 配置 manifest.json 中的 spaceId 和 clientSecret
+| 分类 | 说明 |
+|------|------|
+| 健康养生 | 保健知识、运动健身 |
+| 棋类博弈 | 象棋、围棋、跳棋等 |
+| 烹饪美食 | 各类美食制作教程 |
+| 书法绘画 | 书法入门、国画技巧 |
+| 音乐艺术 | 乐器演奏、声乐学习 |
+| 科技数码 | 智能手机、电脑基础 |
+| 文化艺术 | 诗词鉴赏、传统文化 |
 
 ## 📝 更新日志
 
 ### v1.0.0 (2025-02)
 - ✨ 初始版本发布
-- 🍊 完成商城核心功能
+- 📚 完成课程学习功能
+- 🛒 完成商城核心功能
 - 🛒 实现购物车功能
 - 📋 实现订单管理
 - 👤 实现用户系统
@@ -231,4 +220,4 @@ python main.py -r -p 9000       # 热更新 + 指定端口
 
 **橘上生香 · Orange Fragrance**
 
-从果园到餐桌的美味旅程
+让老年生活更加精彩
