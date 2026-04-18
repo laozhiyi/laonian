@@ -114,6 +114,8 @@ export async function createExternalCourse(data) {
     if (data.link) params.append('link', data.link)
     if (data.description) params.append('description', data.description)
     if (data.category) params.append('category', data.category)
+    if (data.price !== undefined) params.append('price', String(data.price))
+    if (data.stock !== undefined) params.append('stock', String(data.stock))
     if (data.sort !== undefined) params.append('sort', String(data.sort))
 
     const res = await request('POST', `/api/external-courses?${params.toString()}`)
@@ -135,6 +137,8 @@ export async function updateExternalCourse(id, data) {
     if (data.link !== undefined) params.append('link', data.link)
     if (data.description !== undefined) params.append('description', data.description)
     if (data.category !== undefined) params.append('category', data.category)
+    if (data.price !== undefined) params.append('price', String(data.price))
+    if (data.stock !== undefined) params.append('stock', String(data.stock))
     if (data.sort !== undefined) params.append('sort', String(data.sort))
     if (data.status !== undefined) params.append('status', data.status)
 

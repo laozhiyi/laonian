@@ -85,6 +85,26 @@
 				"navigationStyle": "custom",
 				"navigationBarTitleText": "课程介绍"
 			}
+		},
+		{
+			"path": "pages/favorite/favorite",
+			"style": {
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/balance/balance",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "余额充值"
+			}
+		},
+		{
+			"path": "pages/course/all",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "全部课程"
+			}
 		}
 	],
 	"globalStyle": {

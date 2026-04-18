@@ -35,6 +35,11 @@ function saveCurrentUser(user) {
   uni.setStorageSync('current_user', JSON.stringify(user))
 }
 
+// 更新当前用户信息
+export function updateCurrentUser(user) {
+  saveCurrentUser(user)
+}
+
 // 清除当前用户
 function clearCurrentUser() {
   uni.removeStorageSync('current_user')

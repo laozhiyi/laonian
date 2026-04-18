@@ -12,9 +12,10 @@ if sys.platform == 'win32':
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.database import init_db, close_db
-from app.routers import user_router, product_router, cart_router, order_router, address_router, course_router, external_course_router
+from app.routers import user_router, product_router, cart_router, order_router, address_router, course_router, external_course_router, favorite_router, course_order_router, balance_router, upload_router
 
 
 @asynccontextmanager
@@ -22,6 +23,16 @@ async def lifespan(app: FastAPI):
     """生命周期管理"""
     await init_db()
     print("[OK] Database connected")
+
+    # 挂载上传文件静态目录
+    import os
+    upload_dir = os.path.join(os.path.dirname(__file__), "uploads")
+    os.makedirs(upload_dir, exist_ok=True)
+    os.makedirs(os.path.join(upload_dir, "videos"), exist_ok=True)
+    os.makedirs(os.path.join(upload_dir, "images"), exist_ok=True)
+    app.mount("/uploads", StaticFiles(directory=upload_dir), name="uploads")
+    print("[OK] Upload directory mounted")
+
     yield
     await close_db()
     print("[OK] Database disconnected")
@@ -51,6 +62,10 @@ app.include_router(cart_router)
 app.include_router(order_router)
 app.include_router(address_router)
 app.include_router(external_course_router)
+app.include_router(favorite_router)
+app.include_router(course_order_router)
+app.include_router(balance_router)
+app.include_router(upload_router)
 
 
 @app.get("/")

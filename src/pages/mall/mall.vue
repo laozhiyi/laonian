@@ -1,58 +1,154 @@
 <template>
   <view class="page">
-    <!-- 动态背景 -->
-    <view class="ambient-bg">
-      <view class="ambient-blob ambient-blob--1"></view>
-      <view class="ambient-blob ambient-blob--2"></view>
-    </view>
-
-    <!-- 毛玻璃导航 -->
-    <view class="glass-nav" :style="{ paddingTop: statusBarHeight + 'px', height: (statusBarHeight + navHeight) + 'px' }">
-      <view class="glass-nav__brand">
-        <text class="brand-emoji">📚</text>
-        <text class="brand-name">在线课程</text>
+    <!-- 顶部导航 -->
+    <view class="nav-bar" :style="{ paddingTop: statusBarHeight + 'px' }">
+      <view class="nav-content">
+        <view class="nav-brand">
+          <view class="brand-icon">
+            <text class="icon-text">📚</text>
+          </view>
+          <text class="brand-name">选课中心</text>
+        </view>
+        <view class="nav-search" @tap="showSearchPopup = true">
+          <view class="search-icon">
+            <text class="icon-text icon-text--search">🔍</text>
+          </view>
+          <text class="search-text">搜索课程名称、讲师...</text>
+        </view>
       </view>
     </view>
 
-    <!-- 搜索栏（在导航栏下方） -->
-    <view class="search-bar" :style="{ top: (statusBarHeight + navHeight) + 'px' }">
-      <view class="search-box" @tap="showSearchPopup = true">
-        <view class="search-icon">
-          <text class="icon-text icon-text--search">🔍</text>
-        </view>
-        <text class="search-placeholder">{{ searchKeyword || '搜索课程名称、讲师...' }}</text>
+    <!-- 分类标签和内容区域 -->
+    <view class="content-wrapper" :style="{ paddingTop: (statusBarHeight + navHeight) + 'px' }">
+      <!-- 分类标签 -->
+      <view class="category-tabs">
+      <view
+        class="category-tab"
+        :class="{ 'category-tab--active': selectedCategory === '' }"
+        @tap="selectCategory('')"
+      >
+        <text>全部</text>
+      </view>
+      <view
+        class="category-tab"
+        :class="{ 'category-tab--active': selectedCategory === cat.name }"
+        v-for="cat in displayCategories"
+        :key="cat.id"
+        @tap="selectCategory(cat.name)"
+      >
+        <text>{{ cat.icon }} {{ cat.name }}</text>
+      </view>
+      <view
+        class="category-tab"
+        :class="{ 'category-tab--active': selectedCategory === '其他' }"
+        @tap="selectCategory('其他')"
+      >
+        <text>📂 其他</text>
+      </view>
+      <!-- 全部课程按钮 -->
+      <view class="category-tab category-tab--all" @tap="goAllCourses">
+        <text>📋 全部课程</text>
       </view>
     </view>
 
-    <!-- 分类标签栏 -->
-    <view class="category-bar" :style="{ top: (statusBarHeight + navHeight + searchBarHeight) + 'px' }">
-      <scroll-view class="category-scroll" scroll-x enhanced show-scrollbar="false">
-        <view class="category-tabs">
-          <view
-            class="category-tab"
-            :class="{ 'category-tab--active': selectedCategory === '' }"
-            @tap="selectCategory('')"
-          >
-            <text class="category-tab__text">全部</text>
-          </view>
-          <view
-            class="category-tab"
-            :class="{ 'category-tab--active': selectedCategory === cat.name }"
-            :style="selectedCategory === cat.name ? { background: cat.color + '20', borderColor: cat.color } : {}"
-            v-for="cat in categories"
-            :key="cat.id"
-            @tap="selectCategory(cat.name)"
-          >
-            <text class="category-tab__text" :style="selectedCategory === cat.name ? { color: cat.color } : {}">{{ cat.icon }} {{ cat.name }}</text>
+    <scroll-view class="scroll" scroll-y @scrolltolower="onScrollToLower">
+      <!-- 筛选状态提示 -->
+      <view class="filter-status" v-if="searchKeyword || selectedCategory">
+        <view class="filter-status__info">
+          <text class="filter-status__icon" v-if="searchKeyword">🔍</text>
+          <text class="filter-status__icon" v-else>📂</text>
+          <text class="filter-status__text" v-if="searchKeyword">搜索: {{ searchKeyword }}</text>
+          <text class="filter-status__text" v-else>分类: {{ selectedCategory }}</text>
+        </view>
+        <view class="filter-status__clear" @tap="clearFilter">
+          <text>清除筛选</text>
+        </view>
+      </view>
+
+      <!-- 精选课程 -->
+      <view class="featured-section" v-if="featuredCourses.length > 0">
+        <view class="featured-header">
+          <view class="featured-title-wrap">
+            <text class="featured-title">精选课程</text>
+            <text class="featured-subtitle">优质内容推荐</text>
           </view>
         </view>
-      </scroll-view>
-    </view>
+        <view class="featured-grid">
+          <view
+            class="featured-card"
+            v-for="course in featuredCourses"
+            :key="course._isExternal ? 'feat-ext-' + course.id : 'feat-' + course.id"
+            @tap="goDetail(course)"
+          >
+            <view class="featured-card__cover">
+              <image class="featured-card__img" :src="course.cover || getCategoryCover(course.category)" mode="aspectFill" />
+              <view class="featured-card__badge">
+                <text>{{ course._isExternal ? '外部' : '精选' }}</text>
+              </view>
+              <view class="featured-card__purchased-tag" v-if="isCoursePurchased(course.id)">
+                <text>已购</text>
+              </view>
+              <view class="favorite-btn favorite-btn--featured" @tap.stop="toggleFavorite(course, course._isExternal)">
+                <text>{{ isFavorited(course.id, course._isExternal) ? '❤️' : '🤍' }}</text>
+              </view>
+            </view>
+            <view class="featured-card__info">
+              <text class="featured-card__title">{{ course.title }}</text>
+              <text class="featured-card__category">{{ course.category }}</text>
+              <view class="featured-card__footer">
+                <text class="featured-card__price" v-if="course.price > 0">¥{{ Number(course.price).toFixed(0) }}</text>
+                <text class="featured-card__price featured-card__price--free" v-else>免费</text>
+                <view class="featured-card__action" @tap.stop="handleBuy(course)">
+                  <text>{{ isCoursePurchased(course.id) ? '查看' : '详情' }}</text>
+                </view>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
 
-    <scroll-view class="scroll" :style="scrollStyle" scroll-y @scroll="onScroll">
-      <!-- 骨架屏加载状态 -->
-      <view class="skeleton-list" v-if="coursesLoading && courseList.length === 0">
-        <view class="skeleton-card" v-for="n in 6" :key="n">
+      <!-- 热门课程 -->
+      <view class="hot-section" v-if="hotCourses.length > 0">
+        <view class="hot-header">
+          <view class="hot-title-wrap">
+            <text class="hot-title">热门课程</text>
+            <text class="hot-subtitle">学员都在学</text>
+          </view>
+        </view>
+        <view class="hot-grid">
+          <view
+            class="hot-item"
+            v-for="course in hotCourses"
+            :key="course._isExternal ? 'hot-ext-' + course.id : 'hot-' + course.id"
+            @tap="goDetail(course)"
+          >
+            <view class="hot-item__cover">
+              <image class="hot-item__img" :src="course.cover || getCategoryCover(course.category)" mode="aspectFill" />
+              <view class="hot-item__purchased-tag" v-if="isCoursePurchased(course.id)">
+                <text>已购</text>
+              </view>
+              <view class="favorite-btn favorite-btn--hot" @tap.stop="toggleFavorite(course, false)">
+                <text>{{ isFavorited(course.id, false) ? '❤️' : '🤍' }}</text>
+              </view>
+            </view>
+            <view class="hot-item__info">
+              <text class="hot-item__title">{{ course.title }}</text>
+              <text class="hot-item__category">{{ course.category }}</text>
+              <view class="hot-item__footer">
+                <text class="hot-item__price" v-if="course.price > 0">¥{{ Number(course.price).toFixed(0) }}</text>
+                <text class="hot-item__price hot-item__price--free" v-else>免费</text>
+                <view class="hot-item__btn" @tap.stop="handleBuy(course)">
+                  <text>{{ isCoursePurchased(course.id) ? '查看' : (course.price > 0 ? '立即购买' : '查看') }}</text>
+                </view>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 骨架屏加载 -->
+      <view class="skeleton-list" v-if="coursesLoading && featuredCourses.length === 0 && hotCourses.length === 0">
+        <view class="skeleton-card" v-for="n in 8" :key="n">
           <view class="skeleton-cover"></view>
           <view class="skeleton-body">
             <view class="skeleton-title"></view>
@@ -62,160 +158,23 @@
         </view>
       </view>
 
-      <!-- 搜索结果覆盖层（显示在课程列表上方） -->
-      <view class="search-result-overlay" v-if="searchKeyword && !showSearchPopup">
-        <view class="search-result-header">
-          <view class="search-result-info">
-            <text class="search-result-keyword">"{{ searchKeyword }}"</text>
-            <text class="search-result-count">找到 {{ searchResultList.length }} 个相关课程</text>
-          </view>
-          <view class="search-result-back" @tap="clearSearch">
-            <text>返回</text>
-          </view>
-        </view>
-
-        <view class="search-result-list" v-if="searchResultList.length > 0">
-          <view
-            class="search-result-item"
-            :class="{ 'search-result-item--external': course._isExternal }"
-            v-for="course in searchResultList"
-            :key="course._isExternal ? 'ext-' + course.id : course.id"
-            @tap="goDetail(course)"
-          >
-            <image class="result-item__cover" :src="course.cover || getCategoryCover(course.category)" mode="aspectFill" />
-            <view class="result-item__info">
-              <view class="result-item__title-row">
-                <text class="result-item__title">{{ course.title }}</text>
-                <view class="result-item__badge" v-if="course._isExternal">
-                  <text>外部课程</text>
-                </view>
-              </view>
-              <view class="result-item__meta" v-if="course.instructor">
-                <text class="result-item__instructor">讲师：{{ course.instructor }}</text>
-              </view>
-              <view class="result-item__meta" v-if="course.category">
-                <text class="result-item__category">{{ course.category }}</text>
-              </view>
-              <view class="result-item__footer">
-                <text class="result-item__price" v-if="course.priceNow || course.price">¥{{ (course.priceNow || course.price).toFixed(0) }}</text>
-                <text class="result-item__price result-item__price--free" v-else>免费</text>
-                <view class="result-item__btn">
-                  <text>{{ course._isExternal ? '查看详情' : '立即购买' }}</text>
-                </view>
-              </view>
-            </view>
-          </view>
-        </view>
-
-        <!-- 无搜索结果 -->
-        <view class="search-empty-state" v-else>
-          <text class="search-empty-icon">📭</text>
-          <text class="search-empty-text">未找到"{{ searchKeyword }}"相关课程</text>
-          <text class="search-empty-sub">试试其他关键词吧</text>
-          <view class="search-empty-btn" @tap="clearSearch">
-            <text>清除搜索</text>
-          </view>
-        </view>
-      </view>
-
-      <!-- 外部课程推荐区 -->
-      <view class="external-section" v-if="externalCourses.length > 0 && !searchKeyword">
-        <view class="section-header">
-          <text class="section-title">精品课程</text>
-          <text class="section-subtitle">外部优质课程</text>
-        </view>
-        <scroll-view class="external-scroll" scroll-x enhanced show-scrollbar="false">
-          <view
-            class="external-card"
-            v-for="course in filteredExternalCourses"
-            :key="'ext-' + course.id"
-            @tap="goDetail({ ...course, _isExternal: true })"
-          >
-            <image class="external-card__cover" :src="course.cover || getCategoryCover(course.category)" mode="aspectFill" />
-            <view class="external-card__mask">
-              <view class="external-card__category" v-if="course.category">
-                <text>{{ course.category }}</text>
-              </view>
-              <text class="external-card__title">{{ course.title }}</text>
-              <view class="external-card__btn">
-                <text>查看详情</text>
-              </view>
-            </view>
-          </view>
-        </scroll-view>
-      </view>
-
-      <!-- 课程列表（搜索时不显示） -->
-      <view class="course-list" v-if="!searchKeyword && courseList.length > 0">
-        <view
-          class="course-card"
-          v-for="(course, index) in filteredCourses"
-          :key="course.id"
-          :style="{ animationDelay: (index * 0.08) + 's' }"
-          @tap="goDetail(course)"
-        >
-          <!-- 封面图 -->
-          <view class="course-card__cover">
-            <image class="course-card__img" :src="course.cover" mode="aspectFill" />
-            <view class="course-card__level" v-if="course.level">{{ course.level }}</view>
-            <view class="course-card__duration" v-if="course.duration">{{ course.duration }}</view>
-          </view>
-
-          <!-- 课程信息 -->
-          <view class="course-card__body">
-            <text class="course-card__title">{{ course.title }}</text>
-
-            <!-- 讲师信息 -->
-            <view class="course-card__instructor" v-if="course.instructor">
-              <text class="instructor-avatar">{{ course.instructor.charAt(0) }}</text>
-              <text class="instructor-name">{{ course.instructor }}</text>
-            </view>
-
-            <!-- 评分和人数 -->
-            <view class="course-card__meta">
-              <view class="meta-item meta-item--rating">
-                <text class="star-icon">⭐</text>
-                <text class="rating-value">{{ course.rating || '0.0' }}</text>
-              </view>
-              <view class="meta-item meta-item--student">
-                <text class="student-icon">👥</text>
-                <text class="student-count">{{ formatCount(course.studentCount || 0) }}人在学</text>
-              </view>
-            </view>
-
-            <!-- 底部价格和按钮 -->
-            <view class="course-card__footer">
-              <view class="price-wrap">
-                <text class="price-symbol" v-if="course.priceNow || course.price">¥</text>
-                <text class="price-current" :class="{ 'price-current--free': !course.priceNow && !course.price }">
-                  {{ (course.priceNow || course.price) ? (course.priceNow || course.price).toFixed(0) : '免费' }}
-                </text>
-                <text class="price-original" v-if="course.price > course.priceNow">¥{{ (course.price || 0).toFixed(0) }}</text>
-              </view>
-              <view class="add-btn" @tap.stop="addToCart(course)">
-                <text class="icon-text">+</text>
-              </view>
-            </view>
-          </view>
-        </view>
-      </view>
-
       <!-- 空状态 -->
-      <view class="empty-state" v-if="!coursesLoading && filteredCourses.length === 0">
-        <text class="empty-icon">📭</text>
-        <text class="empty-text">暂无相关课程</text>
-        <view class="empty-btn" @tap="clearFilter">
+      <view class="empty-state" v-if="!coursesLoading && featuredCourses.length === 0 && hotCourses.length === 0">
+        <view class="empty-icon">
+          <text>📭</text>
+        </view>
+        <text class="empty-title">暂无相关课程</text>
+        <text class="empty-desc" v-if="searchKeyword">未找到"{{ searchKeyword }}"相关课程</text>
+        <text class="empty-desc" v-else-if="selectedCategory">该分类暂无课程</text>
+        <text class="empty-desc" v-else>换个分类或关键词试试吧</text>
+        <view class="empty-action" v-if="searchKeyword || selectedCategory" @tap="clearFilter">
           <text>清除筛选</text>
         </view>
       </view>
 
-      <!-- 底部加载提示 -->
-      <view class="load-more" v-if="filteredCourses.length > 0">
-        <text class="load-more__text">— 已经到底啦 —</text>
-      </view>
-
       <view class="bottom-spacer" />
     </scroll-view>
+    </view>
 
     <!-- 搜索弹窗 -->
     <view class="search-popup" v-if="showSearchPopup">
@@ -244,12 +203,11 @@
         </view>
 
         <scroll-view class="search-popup__body" scroll-y>
-          <!-- 搜索结果建议（实时） -->
+          <!-- 搜索结果建议 -->
           <view class="search-suggestions" v-if="searchInput && searchSuggestions.length > 0">
             <view class="search-suggestions__title">搜索建议</view>
             <view
               class="search-suggestion-item"
-              :class="{ 'search-suggestion-item--external': item._isExternal }"
               v-for="item in searchSuggestions"
               :key="item._isExternal ? 'ext-' + item.id : item.id"
               @tap="searchBySuggestion(item)"
@@ -257,12 +215,11 @@
               <text class="suggestion-icon">{{ item._isExternal ? '🌐' : '🔍' }}</text>
               <text class="suggestion-text">{{ item.title }}</text>
               <text class="suggestion-badge" v-if="item._isExternal">外部</text>
-              <text class="suggestion-category" v-else>{{ item.category }}</text>
             </view>
           </view>
 
           <!-- 搜索历史 -->
-          <view class="search-section" v-if="!searchInput && (searchHistory || []).length > 0">
+          <view class="search-section" v-if="!searchInput && searchHistory.length > 0">
             <view class="search-section__header">
               <text class="search-section__title">搜索历史</text>
               <view class="search-section__clear" @tap="clearHistory">
@@ -295,91 +252,7 @@
               </view>
             </view>
           </view>
-
-          <!-- 无搜索历史提示 -->
-          <view class="search-empty" v-if="!searchInput && (searchHistory || []).length === 0">
-            <text class="search-empty__text">试试搜索课程名称或讲师</text>
-          </view>
-
-          <!-- 无搜索结果提示 -->
-          <view class="search-empty" v-if="searchInput && searchSuggestions.length === 0">
-            <text class="search-empty__icon">🔍</text>
-            <text class="search-empty__text">未找到相关课程</text>
-            <text class="search-empty__sub">换个关键词试试吧</text>
-          </view>
         </scroll-view>
-      </view>
-    </view>
-
-    <!-- 购物车悬浮球 -->
-    <view class="cart-float" :class="{ 'cart-float--bump': cartBump }" :style="cartFloatStyle" @tap="toggleCart">
-      <view class="cart-float__icon">
-        <text class="icon-text icon-text--cart">🛒</text>
-      </view>
-      <view class="cart-float__badge" v-if="cartCount > 0">{{ cartCount > 99 ? '99+' : cartCount }}</view>
-      <view class="cart-float__total" v-if="cartCount > 0">
-        <text>¥{{ (totalPrice || 0).toFixed(2) }}</text>
-      </view>
-    </view>
-
-    <!-- 购物车面板 -->
-    <view class="cart-panel" v-if="showCart" @tap.self="showCart = false">
-      <view class="cart-panel__mask" @tap="showCart = false" />
-      <view class="cart-panel__sheet">
-        <view class="cart-panel__handle"></view>
-        <view class="cart-panel__header">
-          <view class="cart-panel__scroll-btns" v-if="cartListLength > 3">
-            <view class="scroll-btn" @tap="scrollToTop">
-              <text class="icon-text icon-text--arrow-up">▲</text>
-            </view>
-            <view class="scroll-btn" @tap="scrollToBottom">
-              <text class="icon-text icon-text--arrow-down">▼</text>
-            </view>
-          </view>
-          <text class="cart-panel__title">购物车</text>
-          <view class="cart-panel__clear" @tap="clearCart">
-            <text class="cart-panel__clear-text">清空</text>
-          </view>
-        </view>
-
-        <view class="cart-panel__scroll">
-          <view class="cart-items" v-if="cartListLength > 0">
-            <view class="cart-item" v-for="(item, index) in cartList" :key="item.id">
-              <image class="cart-item__cover" :src="item.cover" mode="aspectFill" />
-              <view class="cart-item__info">
-                <text class="cart-item__title">{{ item.title }}</text>
-                <view class="cart-item__bottom">
-                  <text class="cart-item__price">¥{{ (item.price || 0).toFixed(2) }}</text>
-                  <view class="cart-item__controls">
-                    <view class="qty-btn qty-btn--minus" @tap="changeQuantity(index, -1)">
-                      <text class="icon-text icon-text--minus">−</text>
-                    </view>
-                    <text class="qty-num">{{ item.quantity }}</text>
-                    <view class="qty-btn qty-btn--plus" @tap="changeQuantity(index, 1)">
-                      <text class="icon-text icon-text--add">+</text>
-                    </view>
-                  </view>
-                </view>
-              </view>
-            </view>
-          </view>
-          <view class="cart-empty" v-else>
-            <view class="cart-empty__icon">
-              <text class="icon-text icon-text--cart">🛒</text>
-            </view>
-            <text class="cart-empty__text">购物车空空如也</text>
-          </view>
-        </view>
-
-        <view class="cart-panel__footer" v-if="cartListLength > 0">
-          <view class="cart-total">
-            <text class="cart-total__label">合计</text>
-            <text class="cart-total__value">¥{{ (totalPrice || 0).toFixed(2) }}</text>
-          </view>
-          <view class="checkout-btn" @tap="goCheckout">
-            <text>去结算</text>
-          </view>
-        </view>
       </view>
     </view>
   </view>
@@ -388,54 +261,24 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { getCourses, getCategories } from '@/utils/course.js'
-import { getExternalCourses, getExternalCategories } from '@/utils/external-course.js'
-import { getCart, saveToLocalCart, getLocalCart, updateCartItem, deleteCartItem, clearCart as clearCartApi } from '@/utils/cart.js'
-import { getWithCache } from '@/utils/cache.js'
+import { getCourses } from '@/utils/course.js'
+import { getExternalCourses } from '@/utils/external-course.js'
+import { getFavorites, addFavorite, removeFavoriteByCourse } from '@/utils/favorite.js'
+import { getCurrentUser } from '@/utils/user.js'
+import request from '@/utils/request.js'
 
 // ========== 状态栏高度 ==========
 const statusBarHeight = ref(0)
 const navHeight = ref(88)
-const capsuleInfo = ref({ width: 0, height: 0, left: 0, right: 0, bottom: 0 })
-const searchBarHeight = 100
-const categoryBarHeight = 90
 
-// ========== 滚动区域样式 ==========
-const scrollStyle = computed(() => {
-  const safeBottom = uni.getSystemInfoSync().safeAreaInsets?.bottom || 0
-  const totalTop = statusBarHeight.value + navHeight.value + searchBarHeight + categoryBarHeight
-  return {
-    paddingTop: totalTop + 'px',
-    height: `calc(100vh - ${totalTop}px - ${safeBottom}px)`,
-  }
-})
-
-// ========== 购物车悬浮球样式 ==========
-const cartFloatStyle = computed(() => {
-  const safeBottom = uni.getSystemInfoSync().safeAreaInsets?.bottom || 0
-  return {
-    bottom: (safeBottom + 20) + 'px'
-  }
-})
-
-// ========== 购物车数据 ==========
-const cartList = ref([])
-const cartCount = ref(0)
-const totalPrice = ref(0)
-const showCart = ref(false)
-const cartBump = ref(false)
-
-const cartListLength = computed(() => {
-  return (cartList.value || []).length
-})
+// ========== 已购买的课程ID集合 ==========
+const purchasedCourseIds = ref(new Set())
 
 // ========== 外部课程数据 ==========
 const externalCourses = ref([])
-const externalLoading = ref(false)
 
 // ========== 加载外部课程 ==========
 const loadExternalCourses = async () => {
-  externalLoading.value = true
   try {
     const res = await getExternalCourses()
     if (res?.list) {
@@ -443,129 +286,243 @@ const loadExternalCourses = async () => {
     }
   } catch (error) {
     console.error('加载外部课程失败:', error)
-  } finally {
-    externalLoading.value = false
   }
 }
 
-// ========== 加载外部课程分类 ==========
-const defaultCategories = [
-  { id: 1, name: '老年健康', icon: '🏥', color: '#4ECDC4' },
-  { id: 2, name: '传统文化', icon: '🏛️', color: '#A855F7' },
-  { id: 3, name: '戏曲文艺', icon: '🎭', color: '#FF6B9D' },
-  { id: 4, name: '书法绘画', icon: '🖌️', color: '#F59E0B' },
-  { id: 5, name: '声乐舞蹈', icon: '🎵', color: '#10B981' },
-  { id: 6, name: '智能技术', icon: '💻', color: '#3B82F6' },
-  { id: 7, name: '综合课程', icon: '📚', color: '#FF6B35' },
-]
-
-// 分类默认封面图（本地图片）
+// ========== 分类默认封面图 ==========
 const categoryCovers = {
-  '老年健康': '/static/covers/1-healthcare.jpg',
-  '传统文化': '/static/covers/2-culture.jpg',
-  '戏曲文艺': '/static/covers/3-drama.jpg',
-  '书法绘画': '/static/covers/4-calligraphy.jpg',
-  '声乐舞蹈': '/static/covers/5-music.jpg',
-  '智能技术': '/static/covers/6-tech.jpg',
-  '综合课程': '/static/covers/7-edu.jpg',
+  '公民素养': '/static/covers/2-culture.jpg',
+  '时代前沿': '/static/covers/6-tech.jpg',
+  '时事思政': '/static/covers/8-business.jpg',
+  '隔代教育': '/static/covers/7-edu.jpg',
+  '哲学': '/static/covers/2-culture.jpg',
+  '文学': '/static/covers/2-culture.jpg',
+  '数字素养': '/static/covers/6-tech.jpg',
+  '摄影': '/static/covers/1-healthcare.jpg',
+  '表演': '/static/covers/3-drama.jpg',
+  '社会科学': '/static/covers/9-learning.jpg',
+  '自然科学': '/static/covers/11-elderly.jpg',
+  '农学': '/static/covers/12-cooking.jpg',
+  '语言': '/static/covers/9-learning.jpg',
+  '数学': '/static/covers/9-learning.jpg',
+  '学历教育': '/static/covers/7-edu.jpg',
+  '论文写作': '/static/covers/9-learning.jpg',
+  '医学': '/static/covers/1-healthcare.jpg',
+  '家庭照护': '/static/covers/1-healthcare.jpg',
+  '中医保健': '/static/covers/1-healthcare.jpg',
+  '用药安全': '/static/covers/1-healthcare.jpg',
+  '食品营养': '/static/covers/12-cooking.jpg',
+  '心理健康': '/static/covers/1-healthcare.jpg',
+  '运动健康': '/static/covers/1-healthcare.jpg',
+  '慢病管理': '/static/covers/1-healthcare.jpg',
+  '口腔健康': '/static/covers/1-healthcare.jpg',
+  '生命教育': '/static/covers/1-healthcare.jpg',
+  '老年痴呆防治': '/static/covers/1-healthcare.jpg',
+  '舞蹈': '/static/covers/5-music.jpg',
+  '声乐': '/static/covers/5-music.jpg',
+  '器乐': '/static/covers/5-music.jpg',
+  '书法': '/static/covers/4-calligraphy.jpg',
+  '绘画': '/static/covers/4-calligraphy.jpg',
+  '模特': '/static/covers/5-music.jpg',
+  '戏剧': '/static/covers/3-drama.jpg',
+  '手工': '/static/covers/12-cooking.jpg',
+  '生活休闲': '/static/covers/10-chess.jpg',
+  '历史地理': '/static/covers/2-culture.jpg',
+  '文化': '/static/covers/2-culture.jpg',
+  '退休生涯规划': '/static/covers/7-edu.jpg',
+  '投资理财': '/static/covers/8-business.jpg',
+  '志愿服务': '/static/covers/7-edu.jpg',
+  '创新创业': '/static/covers/8-business.jpg',
+  '农业养殖': '/static/covers/12-cooking.jpg',
+  '职业技能': '/static/covers/6-tech.jpg',
 }
 
 const getCategoryCover = (categoryName) => {
   return categoryCovers[categoryName] || 'https://picsum.photos/400/300'
 }
 
-const loadExternalCategories = async () => {
-  try {
-    const res = await getExternalCategories()
-    if (res?.list && res.list.length > 0) {
-      categories.value = res.list
-    } else {
-      // 使用7个默认分类
-      categories.value = defaultCategories
-    }
-  } catch (error) {
-    console.error('加载外部课程分类失败:', error)
-    // 使用7个默认分类
-    categories.value = defaultCategories
-  }
-}
-
-// ========== 点击外部课程卡片 ==========
-const goToExternalCourse = (course) => {
-  uni.navigateTo({ url: `/pages/external-course/detail?id=${course.id}` })
-}
-
-// ========== 打开外部链接 ==========
-const openExternalLink = (url) => {
-  // #ifdef H5
-  window.open(url, '_blank')
-  // #endif
-  // #ifndef H5
-  plus.runtime.openURL(url)
-  // #endif
-}
-
 // ========== 课程列表数据 ==========
-const allCourses = ref([])
 const courseList = ref([])
 const coursesLoading = ref(false)
 
+// 精选课程和热门课程（从后端加载）
+const featuredCoursesData = ref([])
+const hotCoursesData = ref([])
+const featuredExternalCourses = ref([])
+const hotExternalCourses = ref([])
+
 // ========== 分类数据 ==========
-const categories = ref([])
+const categories = ref([
+  { id: 1, name: '公民素养', icon: '🏛️', color: '#4A90D9' },
+  { id: 2, name: '时代前沿', icon: '🚀', color: '#7B68EE' },
+  { id: 3, name: '时事思政', icon: '📰', color: '#DC143C' },
+  { id: 4, name: '隔代教育', icon: '👨‍👩‍👧', color: '#FF69B4' },
+  { id: 5, name: '哲学', icon: '🧠', color: '#4169E1' },
+  { id: 6, name: '文学', icon: '📚', color: '#8B4513' },
+  { id: 7, name: '数字素养', icon: '💻', color: '#2E8B57' },
+  { id: 8, name: '摄影', icon: '📷', color: '#FF6347' },
+  { id: 9, name: '表演', icon: '🎭', color: '#9370DB' },
+  { id: 10, name: '社会科学', icon: '🔬', color: '#20B2AA' },
+  { id: 11, name: '自然科学', icon: '🌍', color: '#3CB371' },
+  { id: 12, name: '农学', icon: '🌾', color: '#DAA520' },
+  { id: 13, name: '语言', icon: '🗣️', color: '#FF8C00' },
+  { id: 14, name: '数学', icon: '📐', color: '#4682B4' },
+  { id: 15, name: '学历教育', icon: '🎓', color: '#8B0000' },
+  { id: 16, name: '论文写作', icon: '✍️', color: '#556B2F' },
+  { id: 17, name: '医学', icon: '🏥', color: '#B22222' },
+  { id: 18, name: '家庭照护', icon: '🏠', color: '#FF7F50' },
+  { id: 19, name: '中医保健', icon: '🌿', color: '#228B22' },
+  { id: 20, name: '用药安全', icon: '💊', color: '#CD5C5C' },
+  { id: 21, name: '食品营养', icon: '🍎', color: '#32CD32' },
+  { id: 22, name: '心理健康', icon: '💚', color: '#6B8E23' },
+  { id: 23, name: '运动健康', icon: '🏃', color: '#FF4500' },
+  { id: 24, name: '慢病管理', icon: '🩺', color: '#8FBC8F' },
+  { id: 25, name: '口腔健康', icon: '🦷', color: '#87CEEB' },
+  { id: 26, name: '生命教育', icon: '🌱', color: '#98FB98' },
+  { id: 27, name: '老年痴呆防治', icon: '🧩', color: '#D8BFD8' },
+  { id: 28, name: '舞蹈', icon: '💃', color: '#FF1493' },
+  { id: 29, name: '声乐', icon: '🎤', color: '#FFD700' },
+  { id: 30, name: '器乐', icon: '🎸', color: '#C0C0C0' },
+  { id: 31, name: '书法', icon: '🖌️', color: '#8B4513' },
+  { id: 32, name: '绘画', icon: '🎨', color: '#FF69B4' },
+  { id: 33, name: '模特', icon: '👗', color: '#DDA0DD' },
+  { id: 34, name: '戏剧', icon: '🎬', color: '#FFA07A' },
+  { id: 35, name: '手工', icon: '🧶', color: '#F0E68C' },
+  { id: 36, name: '生活休闲', icon: '☕', color: '#DEB887' },
+  { id: 37, name: '历史地理', icon: '🗺️', color: '#778899' },
+  { id: 38, name: '文化', icon: '🏺', color: '#D2691E' },
+  { id: 39, name: '退休生涯规划', icon: '🌅', color: '#FF8C00' },
+  { id: 40, name: '投资理财', icon: '💰', color: '#FFD700' },
+  { id: 41, name: '志愿服务', icon: '❤️', color: '#FF6B6B' },
+  { id: 42, name: '创新创业', icon: '💡', color: '#9ACD32' },
+  { id: 43, name: '农业养殖', icon: '🐄', color: '#8FBC8F' },
+  { id: 44, name: '职业技能', icon: '💼', color: '#6495ED' },
+])
+
+// 6个主要分类
+const mainCategoryNames = ['公民素养', '时代前沿', '时事思政', '隔代教育', '哲学', '文学']
+
+// 显示的分类（只显示前6个）
+const displayCategories = computed(() => {
+  return categories.value.filter(cat => mainCategoryNames.includes(cat.name))
+})
+
 const selectedCategory = ref('')
 
-// ========== 搜索功能 ==========
-const searchKeyword = ref('')
-const showSearchPopup = ref(false)
-const searchHistory = ref([])
-const searchInput = ref('')
-const searchSuggestions = ref([])
-const searchResultList = ref([])
+// ========== 检查分类是否有对应课程 ==========
+const hasExternalInCategory = computed(() => {
+  if (selectedCategory.value === '') return true
+  return externalCourses.value.some(c => c.category === selectedCategory.value)
+})
 
-// 热门搜索关键词
-const hotSearchKeywords = ['老年健康', '书法', '声乐', '传统文化', '智能技术']
+const hasInternalInCategory = computed(() => {
+  if (selectedCategory.value === '') return true
+  return courseList.value.some(c => c.category === selectedCategory.value)
+})
 
 // ========== 筛选后的课程列表 ==========
 const filteredCourses = computed(() => {
-  let list = courseList.value
+  if (selectedCategory.value === '') return courseList.value
+  // "其他"分类：显示不在6个主要分类中的课程
+  if (selectedCategory.value === '其他') {
+    return courseList.value.filter(c => !mainCategoryNames.includes(c.category))
+  }
+  return courseList.value.filter(item => item.category === selectedCategory.value)
+})
 
-  // 分类筛选
-  if (selectedCategory.value) {
-    list = list.filter(item => item.category === selectedCategory.value)
+const filteredExternalCourses = computed(() => {
+  if (selectedCategory.value === '') return externalCourses.value
+  // "其他"分类：显示不在6个主要分类中的课程
+  if (selectedCategory.value === '其他') {
+    return externalCourses.value.filter(c => !mainCategoryNames.includes(c.category))
+  }
+  return externalCourses.value.filter(item => item.category === selectedCategory.value)
+})
+
+// ========== 精选课程 ==========
+const featuredCourses = computed(() => {
+  // 合并内部和外部精选课程
+  const internalList = featuredCoursesData.value.map(c => ({ ...c, _isExternal: false }))
+  const externalList = featuredExternalCourses.value.map(c => ({ ...c, _isExternal: true }))
+  let list = [...internalList, ...externalList]
+
+  // 如果没有筛选条件且是"全部"状态，返回全部课程（不限制数量）
+  if (!selectedCategory.value && !searchKeyword.value) {
+    return list
   }
 
-  // 关键词搜索
-  const keyword = searchKeyword.value.trim().toLowerCase()
-  if (keyword) {
-    list = list.filter(item =>
-      (item.title && item.title.toLowerCase().includes(keyword)) ||
-      (item.instructor && item.instructor.toLowerCase().includes(keyword)) ||
-      (item.tags && item.tags.some(tag => tag.toLowerCase().includes(keyword)))
+  // 筛选模式下，使用全部课程
+  const allCourses = [
+    ...courseList.value.map(c => ({ ...c, _isExternal: false })),
+    ...externalCourses.value.map(c => ({ ...c, _isExternal: true }))
+  ]
+
+  if (selectedCategory.value) {
+    if (selectedCategory.value === '其他') {
+      list = allCourses.filter(c => !mainCategoryNames.includes(c.category))
+    } else {
+      list = allCourses.filter(c => c.category === selectedCategory.value)
+    }
+  } else if (searchKeyword.value) {
+    const kw = searchKeyword.value.toLowerCase()
+    list = allCourses.filter(item =>
+      (item.title && item.title.toLowerCase().includes(kw)) ||
+      (item.instructor && item.instructor.toLowerCase().includes(kw)) ||
+      (item.category && item.category.toLowerCase().includes(kw))
     )
   }
 
   return list
 })
 
-// ========== 筛选后的外部课程列表 ==========
-const filteredExternalCourses = computed(() => {
-  if (!selectedCategory.value) {
-    return externalCourses.value
-  }
-  return externalCourses.value.filter(item => item.category === selectedCategory.value)
-})
+// ========== 热门课程 ==========
+const hotCourses = computed(() => {
+  // 合并内部和外部热门课程
+  const internalList = hotCoursesData.value.map(c => ({ ...c, _isExternal: false }))
+  const externalList = hotExternalCourses.value.map(c => ({ ...c, _isExternal: true }))
+  let list = [...internalList, ...externalList]
 
-// ========== 格式化人数 ==========
-const formatCount = (num) => {
-  if (num >= 10000) {
-    return (num / 10000).toFixed(1) + '万'
+  // 如果没有筛选条件且是"全部"状态，返回全部课程（不限制数量）
+  if (!selectedCategory.value && !searchKeyword.value) {
+    return list
   }
-  return num > 0 ? num : '0'
-}
+
+  // 筛选模式下，使用全部课程
+  if (selectedCategory.value) {
+    if (selectedCategory.value === '其他') {
+      list = [
+        ...courseList.value.filter(c => !mainCategoryNames.includes(c.category)).map(c => ({ ...c, _isExternal: false })),
+        ...externalCourses.value.filter(c => !mainCategoryNames.includes(c.category)).map(c => ({ ...c, _isExternal: true }))
+      ]
+    } else {
+      list = [
+        ...courseList.value.filter(c => c.category === selectedCategory.value).map(c => ({ ...c, _isExternal: false })),
+        ...externalCourses.value.filter(c => c.category === selectedCategory.value).map(c => ({ ...c, _isExternal: true }))
+      ]
+    }
+  } else if (searchKeyword.value) {
+    const kw = searchKeyword.value.toLowerCase()
+    list = [
+      ...courseList.value
+        .filter(item =>
+          (item.title && item.title.toLowerCase().includes(kw)) ||
+          (item.instructor && item.instructor.toLowerCase().includes(kw)) ||
+          (item.category && item.category.toLowerCase().includes(kw))
+        )
+        .map(c => ({ ...c, _isExternal: false })),
+      ...externalCourses.value
+        .filter(item => item.title && item.title.toLowerCase().includes(kw))
+        .map(c => ({ ...c, _isExternal: true }))
+    ]
+  }
+
+  return list
+})
 
 // ========== 选择分类 ==========
 const selectCategory = (category) => {
   selectedCategory.value = category
+  searchKeyword.value = '' // 选择分类时清空搜索
 }
 
 // ========== 清除筛选 ==========
@@ -575,55 +532,36 @@ const clearFilter = () => {
 }
 
 // ========== 搜索功能 ==========
-const doSearch = () => {
-  const keyword = searchInput.value.trim()
-  if (!keyword) {
-    uni.showToast({ title: '请输入搜索关键词', icon: 'none' })
-    return
-  }
-  searchKeyword.value = keyword
+const searchInput = ref('')
+const searchSuggestions = ref([])
+const searchHistory = ref([])
+const showSearchPopup = ref(false)
+const searchKeyword = ref('')
+const searchResultList = ref([])
 
-  // 保存历史记录
-  const history = searchHistory.value.filter(k => k !== keyword)
-  history.unshift(keyword)
-  searchHistory.value = history.slice(0, 10)
-  uni.setStorageSync('search_history', searchHistory.value)
-
-  // 执行搜索
-  performSearch(keyword)
-
-  showSearchPopup.value = false
-  searchInput.value = ''
-  searchSuggestions.value = []
-}
+const hotSearchKeywords = ['数字素养', '书法', '声乐', '心理健康', '医学']
 
 const performSearch = (keyword) => {
   const kw = keyword.toLowerCase()
 
-  // 搜索内部课程
-  const internalResults = allCourses.value
+  const internalResults = courseList.value
     .filter(item =>
       (item.title && item.title.toLowerCase().includes(kw)) ||
       (item.instructor && item.instructor.toLowerCase().includes(kw)) ||
-      (item.category && item.category.toLowerCase().includes(kw)) ||
-      (item.tags && item.tags.some(tag => tag.toLowerCase().includes(kw)))
+      (item.category && item.category.toLowerCase().includes(kw))
     )
     .map(item => ({ ...item, _isExternal: false }))
 
-  // 搜索外部课程
-  const externalResults = (externalCourses.value || [])
+  const externalResults = externalCourses.value
     .filter(item =>
       (item.title && item.title.toLowerCase().includes(kw)) ||
-      (item.category && item.category.toLowerCase().includes(kw)) ||
-      (item.description && item.description.toLowerCase().includes(kw))
+      (item.category && item.category.toLowerCase().includes(kw))
     )
     .map(item => ({ ...item, _isExternal: true }))
 
-  // 合并结果，外部课程优先显示
   searchResultList.value = [...externalResults, ...internalResults]
 }
 
-// 搜索输入时显示实时建议
 const onSearchInput = () => {
   const kw = searchInput.value.trim().toLowerCase()
   if (!kw) {
@@ -631,57 +569,51 @@ const onSearchInput = () => {
     return
   }
 
-  // 搜索建议 - 内部课程
-  const internalSuggestions = allCourses.value
+  const internalSuggestions = courseList.value
     .filter(item =>
       (item.title && item.title.toLowerCase().includes(kw)) ||
-      (item.instructor && item.instructor.toLowerCase().includes(kw)) ||
-      (item.category && item.category.toLowerCase().includes(kw))
+      (item.instructor && item.instructor.toLowerCase().includes(kw))
     )
     .slice(0, 5)
-    .map(item => ({
-      id: item.id,
-      title: item.title,
-      category: item.category || item.instructor || '',
-      cover: item.cover,
-      _isExternal: false
-    }))
+    .map(item => ({ ...item, _isExternal: false }))
 
-  // 搜索建议 - 外部课程
-  const externalSuggestions = (externalCourses.value || [])
-    .filter(item =>
-      (item.title && item.title.toLowerCase().includes(kw)) ||
-      (item.category && item.category.toLowerCase().includes(kw))
-    )
+  const externalSuggestions = externalCourses.value
+    .filter(item => (item.title && item.title.toLowerCase().includes(kw)))
     .slice(0, 3)
-    .map(item => ({
-      id: item.id,
-      title: item.title,
-      category: item.category || '外部课程',
-      cover: item.cover,
-      _isExternal: true
-    }))
+    .map(item => ({ ...item, _isExternal: true }))
 
-  // 合并建议，外部课程优先
   searchSuggestions.value = [...externalSuggestions, ...internalSuggestions].slice(0, 8)
 }
 
-// 点击搜索建议
-const searchBySuggestion = (item) => {
-  searchKeyword.value = item.title
+const doSearch = () => {
+  const keyword = searchInput.value.trim()
+  if (!keyword) return
+
+  searchKeyword.value = keyword
+  selectedCategory.value = '' // 搜索时清空分类
+
+  const history = searchHistory.value.filter(k => k !== keyword)
+  history.unshift(keyword)
+  searchHistory.value = history.slice(0, 10)
+  uni.setStorageSync('search_history', searchHistory.value)
+
+  showSearchPopup.value = false
   searchInput.value = ''
   searchSuggestions.value = []
+}
 
-  // 保存历史
+const searchBySuggestion = (item) => {
+  searchKeyword.value = item.title
+  selectedCategory.value = '' // 搜索时清空分类
+
   const history = searchHistory.value.filter(k => k !== item.title)
   history.unshift(item.title)
   searchHistory.value = history.slice(0, 10)
   uni.setStorageSync('search_history', searchHistory.value)
 
-  // 执行搜索
-  performSearch(item.title)
-
   showSearchPopup.value = false
+  searchInput.value = ''
+  searchSuggestions.value = []
 }
 
 const clearSearchInput = () => {
@@ -702,25 +634,14 @@ const clearHistory = () => {
 
 const searchByKeyword = (keyword) => {
   searchKeyword.value = keyword
+  selectedCategory.value = '' // 搜索时清空分类
   searchInput.value = ''
-  searchSuggestions.value = []
   showSearchPopup.value = false
 
-  // 保存历史
   const history = searchHistory.value.filter(k => k !== keyword)
   history.unshift(keyword)
   searchHistory.value = history.slice(0, 10)
   uni.setStorageSync('search_history', searchHistory.value)
-
-  // 执行搜索
-  performSearch(keyword)
-}
-
-const clearSearch = () => {
-  searchKeyword.value = ''
-  searchResultList.value = []
-  searchInput.value = ''
-  selectedCategory.value = ''
 }
 
 const loadSearchHistory = () => {
@@ -729,16 +650,7 @@ const loadSearchHistory = () => {
 }
 
 // ========== 加载分类 ==========
-const loadCategories = async () => {
-  try {
-    const res = await getCategories()
-    if (res?.list) {
-      categories.value = res.list
-    }
-  } catch (e) {
-    console.error('加载分类失败:', e)
-  }
-}
+// 使用硬编码分类数据，与 list.vue 保持一致
 
 // ========== 加载课程列表 ==========
 const loadCourses = async (forceRefresh = false) => {
@@ -746,28 +658,15 @@ const loadCourses = async (forceRefresh = false) => {
   coursesLoading.value = true
 
   try {
-    let res
-    if (forceRefresh) {
-      res = await getCourses()
-      res = res.list || []
-    } else {
-      res = await getWithCache(
-        'courses_list',
-        async () => {
-          const result = await getCourses()
-          return result.list || []
-        },
-        2 * 60 * 1000
-      )
-    }
-
-    if (res) {
-      courseList.value = res.map(item => ({
-        ...item,
-        id: item._id || item.id
-      }))
-      allCourses.value = courseList.value
-    }
+    const res = await getCourses()
+    const list = res?.list || []
+    courseList.value = list.map(item => ({
+      ...item,
+      id: item._id || item.id
+    }))
+    
+    // 检查已购买状态
+    await checkPurchasedCourses()
   } catch (e) {
     console.error('加载课程失败:', e)
   } finally {
@@ -775,185 +674,208 @@ const loadCourses = async (forceRefresh = false) => {
   }
 }
 
-// ========== 加载购物车 ==========
-const loadCart = async () => {
+// ========== 检查已购买的课程 ==========
+const checkPurchasedCourses = async () => {
+  const userId = getCurrentUser()?.id
+  if (!userId) return
+  
   try {
-    const res = await getCart()
-    cartList.value = res.list || []
-    cartCount.value = res.totalCount || 0
-    totalPrice.value = res.totalPrice || 0
+    const { checkInternalCoursePurchased } = await import('@/utils/course.js')
+    const purchased = new Set()
+    for (const course of courseList.value) {
+      try {
+        const res = await checkInternalCoursePurchased(course.id)
+        if (res.ok && res.purchased) {
+          purchased.add(course.id)
+        }
+      } catch (e) {
+        console.error('检查购买状态失败:', e)
+      }
+    }
+    purchasedCourseIds.value = purchased
   } catch (e) {
-    console.error('加载购物车失败:', e)
+    console.error('检查已购买课程失败:', e)
   }
 }
 
-const onScroll = (e) => {}
+// ========== 判断课程是否已购买 ==========
+const isCoursePurchased = (courseId) => {
+  return purchasedCourseIds.value.has(courseId)
+}
+
+// ========== 收藏功能 ==========
+const favoriteMap = ref({})
+
+const loadFavorites = async () => {
+  const user = getCurrentUser()
+  if (!user?.id) return
+
+  const res = await getFavorites(user.id)
+  if (res.ok) {
+    const map = {}
+    res.list.forEach(item => {
+      map[`${item.course_id}_${item.is_external}`] = item.id
+    })
+    favoriteMap.value = map
+  }
+}
+
+const isFavorited = (courseId, isExternal = false) => {
+  return !!favoriteMap.value[`${courseId}_${isExternal}`]
+}
+
+const toggleFavorite = async (course, isExternal = false) => {
+  const user = getCurrentUser()
+  if (!user?.id) {
+    uni.showToast({ title: '请先登录', icon: 'none' })
+    return
+  }
+
+  const key = `${course.id}_${isExternal}`
+  if (favoriteMap.value[key]) {
+    const res = await removeFavoriteByCourse(user.id, course.id, isExternal)
+    if (res.ok) {
+      delete favoriteMap.value[key]
+      favoriteMap.value = { ...favoriteMap.value }
+      uni.showToast({ title: '已取消收藏', icon: 'none' })
+    }
+  } else {
+    const res = await addFavorite(user.id, course.id, isExternal)
+    if (res.ok) {
+      favoriteMap.value[key] = res.id
+      favoriteMap.value = { ...favoriteMap.value }
+      uni.showToast({ title: '已收藏', icon: 'success' })
+    }
+  }
+}
 
 // ========== 交互方法 ==========
 const goDetail = (course) => {
-  // 检查是否是外部课程
   if (course._isExternal) {
-    goToExternalCourse(course)
+    uni.navigateTo({ url: `/pages/external-course/detail?id=${course.id}` })
     return
   }
   uni.navigateTo({ url: `/pages/product/detail?id=${course.id}` })
 }
 
-const addToCart = async (course) => {
-  await saveToLocalCart(course)
-  const localRes = await getLocalCart()
-  cartList.value = localRes.list || []
-  cartCount.value = localRes.totalCount || 0
-  totalPrice.value = localRes.totalPrice || 0
-
-  cartBump.value = true
-  setTimeout(() => { cartBump.value = false }, 300)
-  uni.showToast({ title: '已添加', icon: 'none' })
-}
-
-const toggleCart = () => {
-  showCart.value = !showCart.value
-}
-
-const scrollToTop = () => {
-  uni.pageScrollTo({ scrollTop: 0, duration: 300 })
-}
-
-const scrollToBottom = () => {
-  uni.pageScrollTo({ scrollTop: 9999, duration: 300 })
-}
-
-const changeQuantity = async (index, delta) => {
-  const item = cartList.value[index]
-  const newQuantity = item.quantity + delta
-
-  if (newQuantity <= 0) {
-    deleteItem(index)
+// 处理购买/查看按钮点击
+const handleBuy = (course) => {
+  // 免费课程直接跳转
+  if (course.price <= 0) {
+    goDetail(course)
     return
   }
-
-  await updateCartItem(item.id, newQuantity)
-  loadCart()
+  // 付费课程跳转到详情页
+  goDetail(course)
 }
 
-const deleteItem = (index) => {
-  const item = cartList.value[index]
-  uni.showModal({
-    title: '确认删除',
-    content: '确定要删除该课程吗？',
-    success: async (res) => {
-      if (res.confirm) {
-        await deleteCartItem(item.id)
-        loadCart()
-      }
-    }
-  })
+// 跳转到全部课程页面
+const goAllCourses = () => {
+  uni.navigateTo({ url: '/pages/course/all' })
 }
 
-const clearCart = () => {
-  if (cartList.value.length === 0) return
-  uni.showModal({
-    title: '确认清空',
-    content: '确定要清空购物车吗？',
-    success: async (res) => {
-      if (res.confirm) {
-        await clearCartApi()
-        cartList.value = []
-        cartCount.value = 0
-        totalPrice.value = 0
-        showCart.value = false
-      }
-    }
-  })
-}
-
-const goCheckout = () => {
-  if (cartCount.value === 0) {
-    uni.showToast({ title: '请先添加课程到购物车', icon: 'none' })
-    return
-  }
-  const token = uni.getStorageSync('demo_token')
-  if (!token) {
-    uni.showToast({ title: '请先登录', icon: 'none' })
-    setTimeout(() => {
-      uni.navigateTo({ url: '/pages/auth/login' })
-    }, 1000)
-    return
-  }
-  uni.navigateTo({ url: '/pages/checkout/checkout' })
-}
+const onScrollToLower = () => {}
 
 // ========== 生命周期 ==========
 onMounted(() => {
   const sys = uni.getSystemInfoSync()
   statusBarHeight.value = sys.statusBarHeight || 0
-  try {
-    const capsule = uni.getMenuButtonBoundingClientRect()
-    if (capsule) {
-      capsuleInfo.value = {
-        width: capsule.width || 0,
-        height: capsule.height || 0,
-        left: capsule.left || 0,
-        right: capsule.right || 0,
-        bottom: capsule.bottom || 0
-      }
-    }
-  } catch (e) {}
-  loadCategories()
-  loadExternalCategories()
   loadCourses()
   loadExternalCourses()
-  loadCart()
+  loadFeaturedCourses()
+  loadHotCourses()
+  loadExternalFeaturedCourses()
+  loadExternalHotCourses()
   loadSearchHistory()
 })
 
 onShow(() => {
   loadCourses(true)
   loadExternalCourses()
-  loadCart()
+  loadFeaturedCourses()
+  loadHotCourses()
+  loadExternalFeaturedCourses()
+  loadExternalHotCourses()
+  loadFavorites()
 })
+
+// 加载精选课程
+const loadFeaturedCourses = async () => {
+  try {
+    const res = await request.get('/api/courses/featured/list')
+    if (res?.list) {
+      featuredCoursesData.value = res.list
+    }
+  } catch (e) {
+    console.error('加载精选课程失败:', e)
+  }
+}
+
+// 加载热门课程
+const loadHotCourses = async () => {
+  try {
+    const res = await request.get('/api/courses/hot/list')
+    if (res?.list) {
+      hotCoursesData.value = res.list
+    }
+  } catch (e) {
+    console.error('加载热门课程失败:', e)
+  }
+}
+
+// 加载外部精选课程
+const loadExternalFeaturedCourses = async () => {
+  try {
+    const res = await request.get('/api/external-courses/featured/list')
+    if (res?.list) {
+      featuredExternalCourses.value = res.list
+    }
+  } catch (e) {
+    console.error('加载外部精选课程失败:', e)
+  }
+}
+
+// 加载外部热门课程
+const loadExternalHotCourses = async () => {
+  try {
+    const res = await request.get('/api/external-courses/hot/list')
+    if (res?.list) {
+      hotExternalCourses.value = res.list
+    }
+  } catch (e) {
+    console.error('加载外部热门课程失败:', e)
+  }
+}
 </script>
 
 <style lang="scss" scoped>
-// ========== 设计规范 ==========
-$primary: #FF6B35;
-$primary-light: #FF9F5A;
-$secondary: #4ECDC4;
-$pink: #FF6B9D;
-$purple: #A855F7;
-$blue: #3B82F6;
-$green: #10B981;
-$orange-gradient: linear-gradient(135deg, $primary 0%, #FF8E53 50%, $primary-light 100%);
-$glass-bg: rgba(255, 255, 255, 0.85);
-$glass-border: rgba(255, 255, 255, 0.5);
-$text-primary: #1A1A1A;
-$text-secondary: #5A5A5A;
-$text-muted: #999999;
-$bg-light: #FFFAF7;
+// ========== 设计规范 - 专业课程平台风格 ==========
+$primary: #2563EB;
+$primary-light: #3B82F6;
+$primary-dark: #1D4ED8;
+$secondary: #10B981;
+$accent: #F59E0B;
+$orange-gradient: linear-gradient(135deg, $primary 0%, $primary-light 50%, #60A5FA 100%);
+$gold-gradient: linear-gradient(135deg, $accent 0%, #FBBF24 100%);
+$text-primary: #0F172A;
+$text-secondary: #334155;
+$text-muted: #94A3B8;
+$bg-light: #F8FAFC;
+$bg-card: #FFFFFF;
 
 @keyframes slideUpFade {
-  from { opacity: 0; transform: translateY(30rpx); }
+  from { opacity: 0; transform: translateY(20rpx); }
   to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8rpx); }
-}
-
-@keyframes blob-pulse {
-  0%, 100% { transform: scale(1); opacity: 0.4; }
-  50% { transform: scale(1.1); opacity: 0.6; }
-}
-
-@keyframes bump {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.15); }
 }
 
 @keyframes shimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
+}
+
+@keyframes slideDownFade {
+  from { opacity: 0; transform: translateY(-20rpx); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .page {
@@ -962,344 +884,288 @@ $bg-light: #FFFAF7;
   position: relative;
 }
 
-/* 动态背景 */
-.ambient-bg {
+/* ========== 导航栏 ========== */
+.nav-bar {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  pointer-events: none;
-  z-index: 0;
-  overflow: hidden;
-}
-
-.ambient-blob {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(100rpx);
-  animation: blob-pulse 10s ease-in-out infinite;
-}
-
-.ambient-blob--1 {
-  width: 500rpx; height: 500rpx;
-  background: linear-gradient(135deg, $primary 0%, rgba(255, 159, 90, 0.4) 100%);
-  top: -150rpx; right: -100rpx;
-}
-
-.ambient-blob--2 {
-  width: 400rpx; height: 400rpx;
-  background: linear-gradient(135deg, $secondary 0%, rgba(78, 205, 196, 0.3) 100%);
-  bottom: 200rpx; left: -150rpx;
-  animation-delay: 3s;
-}
-
-/* 毛玻璃导航 */
-.glass-nav {
-  position: fixed;
-  top: 0; left: 0; right: 0;
-  height: auto; min-height: 88rpx;
-  background: rgba(255, 255, 255, 0.80);
-  backdrop-filter: blur(30rpx);
-  -webkit-backdrop-filter: blur(30rpx);
-  border-bottom: 1rpx solid rgba(255, 255, 255, 0.3);
+  top: 0;
+  left: 0;
+  right: 0;
+  background: $bg-card;
   z-index: 100;
+  border-bottom: 1rpx solid #E2E8F0;
+}
+
+.nav-content {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 0 24rpx;
-  box-sizing: border-box;
+  padding: 20rpx 24rpx;
+  gap: 20rpx;
 }
 
-.glass-nav__brand {
+.nav-brand {
   display: flex;
   align-items: center;
   gap: 12rpx;
+  flex-shrink: 0;
 }
 
-.brand-emoji {
-  font-size: 40rpx;
-  animation: float 4s ease-in-out infinite;
+.brand-icon {
+  width: 56rpx;
+  height: 56rpx;
+  background: $primary;
+  border-radius: 14rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  .icon-text {
+    font-size: 28rpx;
+  }
 }
 
 .brand-name {
-  font-size: 34rpx;
+  font-size: 32rpx;
   font-weight: 700;
   color: $text-primary;
-  letter-spacing: 2rpx;
-}
-
-/* 搜索栏 */
-.search-bar {
-  position: fixed;
-  left: 0; right: 0;
-  height: 100rpx;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(30rpx);
-  -webkit-backdrop-filter: blur(30rpx);
-  border-bottom: 1rpx solid rgba(255, 255, 255, 0.3);
-  z-index: 99;
-  padding: 0 24rpx;
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-}
-
-.search-box {
-  flex: 1;
-  height: 80rpx;
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 40rpx;
-  display: flex;
-  align-items: center;
-  padding: 0 32rpx;
-  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
-  border: 1rpx solid rgba(0, 0, 0, 0.05);
-}
-
-.search-icon {
-  width: 36rpx; height: 36rpx;
-  color: $text-muted;
-}
-
-.search-placeholder {
-  margin-left: 16rpx;
-  font-size: 28rpx;
-  color: $text-muted;
   letter-spacing: 1rpx;
 }
 
-/* 分类标签栏 */
-.category-bar {
-  position: fixed;
-  left: 0; right: 0;
-  height: 90rpx;
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(30rpx);
-  -webkit-backdrop-filter: blur(30rpx);
-  border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
-  z-index: 98;
-}
-
-.category-scroll {
-  height: 90rpx;
-  white-space: nowrap;
-}
-
-.category-tabs {
-  display: inline-flex;
+.nav-search {
+  flex: 1;
+  height: 72rpx;
+  background: #F1F5F9;
+  border-radius: 36rpx;
+  display: flex;
   align-items: center;
-  padding: 16rpx 24rpx;
+  padding: 0 28rpx;
+  gap: 12rpx;
+}
+
+.search-icon {
+  color: $text-muted;
+}
+
+.search-text {
+  font-size: 26rpx;
+  color: $text-muted;
+}
+
+/* ========== 内容区域 ========== */
+.content-wrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 98;
+  overflow-y: auto;
+  background: $bg-light;
+}
+
+/* ========== 分类标签 ========== */
+.category-tabs {
+  display: flex;
+  flex-wrap: wrap;
   gap: 16rpx;
+  margin-bottom: 28rpx;
+  padding-top: 35rpx;
+  animation: slideUpFade 0.4s ease-out;
 }
 
 .category-tab {
-  display: inline-flex;
-  align-items: center;
-  padding: 12rpx 28rpx;
-  background: #f5f5f5;
-  border-radius: 30rpx;
-  border: 2rpx solid transparent;
-  transition: all 0.3s ease;
-  white-space: nowrap;
-  flex-shrink: 0;
-
-  &--active {
-    background: rgba(255, 107, 53, 0.1);
-    border-color: $primary;
-  }
+  padding: 12rpx 24rpx;
+  background: #fff;
+  border: 1rpx solid #E2E8F0;
+  border-radius: 32rpx;
+  font-size: 26rpx;
+  color: #334155;
+  transition: all 0.3s;
 
   &:active {
     transform: scale(0.95);
   }
-}
 
-.category-tab__text {
-  font-size: 26rpx;
-  font-weight: 500;
-  color: $text-secondary;
-  letter-spacing: 1rpx;
-
-  .category-tab--active & {
-    color: $primary;
+  &--active {
+    background: linear-gradient(135deg, $primary, $primary-light);
+    color: #fff;
+    border-color: transparent;
     font-weight: 600;
+  }
+
+  &--all {
+    background: linear-gradient(135deg, $secondary, #36CFC9);
+    color: #fff;
+    border-color: transparent;
+    font-weight: 600;
+
+    &:active {
+      opacity: 0.85;
+    }
   }
 }
 
-/* 滚动区域 */
+/* ========== 滚动区域 ========== */
 .scroll {
-  position: relative;
-  z-index: 1;
-}
-
-/* 外部课程推荐区 */
-.external-section {
   padding: 24rpx;
-  padding-bottom: 0;
 }
 
-.section-header {
+/* ========== 筛选状态提示 ========== */
+.filter-status {
   display: flex;
-  align-items: baseline;
-  gap: 16rpx;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20rpx 24rpx;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(59, 130, 246, 0.05));
+  border: 1rpx solid rgba(37, 99, 235, 0.15);
+  border-radius: 16rpx;
+  margin-bottom: 24rpx;
+  animation: slideUpFade 0.3s ease-out;
+
+  &__info {
+    display: flex;
+    align-items: center;
+    gap: 12rpx;
+  }
+
+  &__icon {
+    font-size: 28rpx;
+  }
+
+  &__text {
+    font-size: 26rpx;
+    color: $primary;
+    font-weight: 500;
+  }
+
+  &__clear {
+    padding: 10rpx 20rpx;
+    background: $primary;
+    border-radius: 20rpx;
+    font-size: 24rpx;
+    color: #fff;
+    font-weight: 500;
+
+    &:active {
+      opacity: 0.8;
+    }
+  }
+}
+
+/* ========== 精选课程区块 ========== */
+.featured-section {
+  padding: 24rpx 24rpx 0;
+}
+
+.featured-header {
   margin-bottom: 20rpx;
 }
 
-.section-title {
+.featured-title-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 16rpx;
+}
+
+.featured-title {
   font-size: 36rpx;
   font-weight: 700;
   color: $text-primary;
 }
 
-.section-subtitle {
+.featured-subtitle {
   font-size: 24rpx;
   color: $text-muted;
 }
 
-.external-scroll {
-  white-space: nowrap;
+.featured-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20rpx;
 }
 
-.external-card {
-  display: inline-block;
-  width: 320rpx;
-  height: 200rpx;
+.featured-card {
+  background: $bg-card;
   border-radius: 20rpx;
   overflow: hidden;
-  margin-right: 20rpx;
-  position: relative;
-  flex-shrink: 0;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
 
   &:active {
-    transform: scale(0.97);
+    transform: scale(0.98);
     opacity: 0.9;
   }
 }
 
-.external-card__cover {
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, $primary, $secondary);
-}
-
-.external-card__mask {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.3) 60%, transparent 100%);
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  padding: 20rpx;
-}
-
-.external-card__category {
-  display: inline-block;
-  padding: 4rpx 12rpx;
-  background: rgba(255, 107, 53, 0.9);
-  border-radius: 10rpx;
-  font-size: 20rpx;
-  color: #fff;
-  font-weight: 600;
-  width: fit-content;
-  margin-bottom: 8rpx;
-}
-
-.external-card__title {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #fff;
-  margin-bottom: 12rpx;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  line-height: 1.3;
-}
-
-.external-card__btn {
-  display: inline-block;
-  padding: 8rpx 20rpx;
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 20rpx;
-  font-size: 22rpx;
-  color: $primary;
-  font-weight: 600;
-  width: fit-content;
-}
-
-/* 课程列表 */
-.course-list {
-  display: flex;
-  flex-direction: column;
-  gap: 24rpx;
-  padding: 24rpx;
-}
-
-/* 课程卡片 */
-.course-card {
-  background: $glass-bg;
-  backdrop-filter: blur(20rpx);
-  -webkit-backdrop-filter: blur(20rpx);
-  border-radius: 24rpx;
-  overflow: hidden;
-  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.06);
-  border: 1rpx solid rgba(255, 255, 255, 0.6);
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  animation: slideUpFade 0.6s ease-out both;
-  display: flex;
-
-  &:active {
-    transform: scale(0.98);
-    box-shadow: 0 12rpx 40rpx rgba(255, 107, 53, 0.12);
-  }
-}
-
-.course-card__cover {
+.featured-card__cover {
   position: relative;
-  width: 240rpx;
-  height: 200rpx;
-  flex-shrink: 0;
+  width: 100%;
+  aspect-ratio: 16 / 10;
 }
 
-.course-card__img {
+.featured-card__img {
   width: 100%;
   height: 100%;
 }
 
-.course-card__level {
+.featured-card__badge {
   position: absolute;
   top: 12rpx;
   left: 12rpx;
-  padding: 6rpx 12rpx;
-  background: rgba(255, 107, 53, 0.9);
+  padding: 6rpx 14rpx;
+  background: $accent;
   border-radius: 8rpx;
   font-size: 20rpx;
   font-weight: 600;
   color: #fff;
 }
 
-.course-card__duration {
+.featured-card__purchased-tag {
   position: absolute;
-  bottom: 12rpx;
+  top: 12rpx;
   right: 12rpx;
-  padding: 4rpx 10rpx;
-  background: rgba(0, 0, 0, 0.6);
-  border-radius: 6rpx;
-  font-size: 18rpx;
+  padding: 6rpx 14rpx;
+  background: #10B981;
+  border-radius: 8rpx;
+  font-size: 20rpx;
+  font-weight: 600;
   color: #fff;
 }
 
-.course-card__body {
-  flex: 1;
-  padding: 20rpx;
+.favorite-btn {
+  position: absolute;
+  width: 64rpx;
+  height: 64rpx;
   display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 50%;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.15);
+  font-size: 32rpx;
+  z-index: 10;
+
+  &--featured {
+    bottom: 16rpx;
+    right: 16rpx;
+  }
+
+  &--hot {
+    bottom: 80rpx;
+    right: 16rpx;
+  }
+
+  &:active {
+    transform: scale(0.9);
+  }
 }
 
-.course-card__title {
+.featured-card__info {
+  padding: 20rpx;
+}
+
+.featured-card__title {
   font-size: 28rpx;
   font-weight: 600;
   color: $text-primary;
-  line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -1307,148 +1173,205 @@ $bg-light: #FFFAF7;
   margin-bottom: 8rpx;
 }
 
-.course-card__instructor {
-  display: flex;
-  align-items: center;
-  gap: 10rpx;
-  margin-bottom: 8rpx;
-}
-
-.instructor-avatar {
-  width: 40rpx;
-  height: 40rpx;
-  background: $orange-gradient;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20rpx;
-  font-weight: 600;
-  color: #fff;
-}
-
-.instructor-name {
+.featured-card__category {
   font-size: 22rpx;
-  color: $text-secondary;
+  color: $text-muted;
+  margin-bottom: 12rpx;
 }
 
-.course-card__meta {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-  margin-bottom: 8rpx;
-}
-
-.meta-item {
-  display: flex;
-  align-items: center;
-  gap: 6rpx;
-}
-
-.meta-item--rating {
-  .star-icon {
-    font-size: 22rpx;
-  }
-  .rating-value {
-    font-size: 24rpx;
-    font-weight: 600;
-    color: #f59e0b;
-  }
-}
-
-.meta-item--student {
-  .student-icon {
-    font-size: 22rpx;
-  }
-  .student-count {
-    font-size: 22rpx;
-    color: $text-muted;
-  }
-}
-
-.course-card__footer {
+.featured-card__footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.price-wrap {
-  display: flex;
-  align-items: baseline;
-  gap: 6rpx;
-}
-
-.price-symbol {
-  font-size: 24rpx;
-  font-weight: 600;
-  color: $primary;
-}
-
-.price-current {
-  font-size: 40rpx;
+.featured-card__price {
+  font-size: 32rpx;
   font-weight: 700;
   color: $primary;
 }
 
-.price-current--free {
+.featured-card__price--free {
   color: $secondary;
-  font-size: 32rpx;
+  font-size: 26rpx;
 }
 
-.price-original {
+.featured-card__action {
+  padding: 10rpx 24rpx;
+  background: $primary;
+  border-radius: 20rpx;
   font-size: 22rpx;
-  color: $text-muted;
-  text-decoration: line-through;
-  margin-left: 8rpx;
-}
+  font-weight: 600;
 
-.add-btn {
-  width: 56rpx;
-  height: 56rpx;
-  background: $orange-gradient;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 6rpx 20rpx rgba(255, 107, 53, 0.35);
-  transition: all 0.3s ease;
-
-  &:active {
-    transform: scale(0.9);
-  }
-
-  .icon-text {
-    font-size: 32rpx;
-    font-weight: 500;
+  text {
     color: #fff;
   }
+
+  &:active {
+    background: $primary-dark;
+  }
 }
 
-/* 骨架屏 */
-.skeleton-list {
+.featured-card__action--view {
+  background: $secondary;
+
+  &:active {
+    background: darken($secondary, 10%);
+  }
+}
+
+/* ========== 热门课程区块 ========== */
+.hot-section {
+  padding: 32rpx 24rpx 0;
+}
+
+.hot-header {
+  margin-bottom: 20rpx;
+}
+
+.hot-title-wrap {
   display: flex;
-  flex-direction: column;
-  gap: 24rpx;
+  align-items: baseline;
+  gap: 16rpx;
+}
+
+.hot-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: $text-primary;
+}
+
+.hot-subtitle {
+  font-size: 24rpx;
+  color: $text-muted;
+}
+
+.hot-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20rpx;
+}
+
+.hot-item {
+  background: $bg-card;
+  border-radius: 20rpx;
+  overflow: hidden;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+
+  &:active {
+    transform: scale(0.98);
+    opacity: 0.9;
+  }
+}
+
+.hot-item__cover {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+}
+
+.hot-item__img {
+  width: 100%;
+  height: 100%;
+}
+
+.hot-item__purchased-tag {
+  position: absolute;
+  top: 12rpx;
+  right: 12rpx;
+  padding: 6rpx 14rpx;
+  background: #10B981;
+  border-radius: 8rpx;
+  font-size: 20rpx;
+  font-weight: 600;
+  color: #fff;
+}
+
+.hot-item__info {
+  padding: 20rpx;
+}
+
+.hot-item__title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: $text-primary;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: 8rpx;
+}
+
+.hot-item__category {
+  font-size: 22rpx;
+  color: $text-muted;
+  margin-bottom: 12rpx;
+}
+
+.hot-item__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hot-item__price {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: $primary;
+}
+
+.hot-item__price--free {
+  color: $secondary;
+  font-size: 26rpx;
+}
+
+.hot-item__btn {
+  padding: 10rpx 24rpx;
+  background: $primary;
+  border-radius: 20rpx;
+  font-size: 22rpx;
+  font-weight: 600;
+
+  text {
+    color: #fff;
+  }
+
+  &:active {
+    background: $primary-dark;
+  }
+}
+
+.hot-item__btn--view {
+  background: $secondary;
+
+  &:active {
+    background: darken($secondary, 10%);
+  }
+}
+
+/* ========== 骨架屏 ========== */
+.skeleton-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20rpx;
   padding: 24rpx;
 }
 
 .skeleton-card {
   background: rgba(255, 255, 255, 0.8);
-  border-radius: 24rpx;
+  border-radius: 20rpx;
   overflow: hidden;
-  display: flex;
 }
 
 .skeleton-cover {
-  width: 240rpx;
-  height: 200rpx;
+  width: 100%;
+  aspect-ratio: 16 / 10;
   background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
 
 .skeleton-body {
-  flex: 1;
   padding: 20rpx;
   display: flex;
   flex-direction: column;
@@ -1456,34 +1379,33 @@ $bg-light: #FFFAF7;
 }
 
 .skeleton-title {
-  height: 32rpx;
-  width: 80%;
-  border-radius: 8rpx;
-  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-}
-
-.skeleton-sub {
-  height: 24rpx;
-  width: 50%;
+  height: 28rpx;
+  width: 85%;
   border-radius: 6rpx;
   background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
 
-.skeleton-footer {
-  height: 36rpx;
-  width: 40%;
-  margin-top: auto;
-  border-radius: 8rpx;
+.skeleton-sub {
+  height: 22rpx;
+  width: 50%;
+  border-radius: 4rpx;
   background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
 
-/* 空状态 */
+.skeleton-footer {
+  height: 32rpx;
+  width: 40%;
+  border-radius: 6rpx;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* ========== 空状态 ========== */
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -1498,33 +1420,29 @@ $bg-light: #FFFAF7;
   opacity: 0.5;
 }
 
-.empty-text {
-  font-size: 28rpx;
+.empty-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: $text-primary;
+  margin-bottom: 12rpx;
+}
+
+.empty-desc {
+  font-size: 26rpx;
   color: $text-muted;
-  margin-bottom: 32rpx;
 }
 
-.empty-btn {
-  padding: 20rpx 48rpx;
-  background: $orange-gradient;
-  border-radius: 30rpx;
+.empty-action {
+  margin-top: 32rpx;
+  padding: 16rpx 40rpx;
+  background: $primary;
+  border-radius: 32rpx;
+  font-size: 28rpx;
+  color: #fff;
+  font-weight: 600;
 
-  text {
-    font-size: 26rpx;
-    font-weight: 600;
-    color: #fff;
-  }
-}
-
-/* 加载更多 */
-.load-more {
-  padding: 48rpx 0;
-  text-align: center;
-
-  &__text {
-    font-size: 24rpx;
-    color: $text-muted;
-    letter-spacing: 2rpx;
+  &:active {
+    opacity: 0.8;
   }
 }
 
@@ -1532,295 +1450,13 @@ $bg-light: #FFFAF7;
   height: 200rpx;
 }
 
-/* ========== 购物车相关样式（保留原有） ========== */
-.cart-float {
-  position: fixed;
-  right: 32rpx;
-  background: $orange-gradient;
-  border-radius: 50rpx;
-  padding: 20rpx 32rpx 20rpx 24rpx;
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  box-shadow: 0 12rpx 48rpx rgba(255, 107, 53, 0.4);
-  z-index: 90;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-
-  &--bump {
-    animation: bump 0.3s ease-out;
-  }
-
-  &:active {
-    transform: scale(0.95);
-  }
-}
-
-.cart-float__icon {
-  width: 48rpx; height: 48rpx;
-  color: #fff;
-}
-
-.cart-float__badge {
-  min-width: 40rpx;
-  height: 40rpx;
-  padding: 0 12rpx;
-  background: linear-gradient(135deg, #ff4757, #ff6b81);
-  border-radius: 20rpx;
-  font-size: 24rpx;
-  font-weight: 700;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.cart-float__total {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #fff;
-}
-
-.cart-panel {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  z-index: 200;
-}
-
-.cart-panel__mask {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(8rpx);
-}
-
-.cart-panel__sheet {
-  position: fixed;
-  left: 0; right: 0; bottom: 0;
-  background: #fff;
-  border-radius: 40rpx 40rpx 0 0;
-  height: 75vh;
-  max-height: 75vh;
-  display: flex;
-  flex-direction: column;
-  animation: slideUpSheet 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: hidden;
-}
-
-@keyframes slideUpSheet {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
-}
-
-.cart-panel__handle {
-  width: 80rpx; height: 8rpx;
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 4rpx;
-  margin: 20rpx auto 8rpx;
-}
-
-.cart-panel__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 32rpx 16rpx;
-  border-bottom: 1rpx solid #f5f5f5;
-}
-
-.cart-panel__scroll-btns {
-  display: flex;
-  gap: 12rpx;
-}
-
-.scroll-btn {
-  width: 48rpx; height: 48rpx;
-  background: #f5f5f5;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.cart-panel__title {
-  font-size: 36rpx;
-  font-weight: 700;
-  color: $text-primary;
-}
-
-.cart-panel__clear {
-  display: flex;
-  align-items: center;
-  font-size: 26rpx;
-  color: $text-muted;
-  padding: 12rpx 24rpx;
-  background: #f5f5f5;
-  border-radius: 24rpx;
-  white-space: nowrap;
-}
-
-.cart-panel__scroll {
-  flex: 1;
-  overflow-x: hidden;
-  overflow-y: auto;
-}
-
-.cart-items {
-  padding: 24rpx 32rpx;
-}
-
-.cart-item {
-  display: flex;
-  align-items: center;
-  padding: 24rpx 0;
-  border-bottom: 1rpx solid #f8f8f8;
-
-  &:last-child {
-    border-bottom: none;
-  }
-}
-
-.cart-item__cover {
-  width: 140rpx; height: 140rpx;
-  border-radius: 20rpx;
-  flex-shrink: 0;
-}
-
-.cart-item__info {
-  flex: 1;
-  margin-left: 24rpx;
-}
-
-.cart-item__title {
-  font-size: 28rpx;
-  font-weight: 500;
-  color: $text-primary;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  margin-bottom: 16rpx;
-}
-
-.cart-item__bottom {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.cart-item__price {
-  font-size: 36rpx;
-  font-weight: 700;
-  color: $primary;
-}
-
-.cart-item__controls {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-}
-
-.qty-btn {
-  width: 52rpx; height: 52rpx;
-  border-radius: 16rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.qty-btn--minus {
-  background: #f5f5f5;
-  color: $text-secondary;
-
-  &:active {
-    background: $primary;
-    color: #fff;
-  }
-}
-
-.qty-btn--plus {
-  background: $orange-gradient;
-  color: #fff;
-
-  &:active {
-    transform: scale(0.9);
-  }
-}
-
-.qty-num {
-  min-width: 48rpx;
-  text-align: center;
-  font-size: 30rpx;
-  font-weight: 600;
-  color: $text-primary;
-}
-
-.cart-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 120rpx 0;
-
-  &__icon {
-    width: 120rpx; height: 120rpx;
-    color: $text-muted;
-    opacity: 0.3;
-    margin-bottom: 24rpx;
-  }
-
-  &__text {
-    font-size: 28rpx;
-    color: $text-muted;
-  }
-}
-
-.cart-panel__footer {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  padding: 24rpx 32rpx;
-  padding-bottom: calc(4rpx + env(safe-area-inset-bottom));
-  background: #fff;
-  border-top: 1rpx solid #f5f5f5;
-}
-
-.cart-total {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-
-  &__label {
-    font-size: 28rpx;
-    color: $text-secondary;
-  }
-
-  &__value {
-    font-size: 48rpx;
-    font-weight: 700;
-    color: $primary;
-  }
-}
-
-.checkout-btn {
-  background: $orange-gradient;
-  padding: 28rpx 64rpx;
-  border-radius: 44rpx;
-
-  text {
-    font-size: 30rpx;
-    font-weight: 600;
-    color: #fff;
-  }
-
-  &:active {
-    transform: scale(0.96);
-  }
-}
-
 /* ========== 搜索弹窗 ========== */
 .search-popup {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 300;
 }
 
@@ -1832,23 +1468,19 @@ $bg-light: #FFFAF7;
 
 .search-popup__content {
   position: fixed;
-  left: 0; right: 0;
+  left: 0;
+  right: 0;
   background: #fff;
   animation: slideDownFade 0.3s ease-out;
   overflow: hidden;
   z-index: 200;
 }
 
-@keyframes slideDownFade {
-  from { opacity: 0; transform: translateY(-20rpx); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
 .search-popup__header {
   display: flex;
   align-items: center;
   padding: 20rpx 24rpx;
-  border-bottom: 1rpx solid #f5f5f5;
+  border-bottom: 1rpx solid #F1F5F9;
 }
 
 .search-popup__input-wrap {
@@ -1856,29 +1488,29 @@ $bg-light: #FFFAF7;
   display: flex;
   align-items: center;
   height: 80rpx;
-  background: #f5f5f5;
+  background: #F1F5F9;
   border-radius: 40rpx;
   padding: 0 16rpx 0 24rpx;
+  gap: 12rpx;
 }
 
 .search-popup__icon {
-  width: 36rpx; height: 36rpx;
   color: $text-muted;
 }
 
 .search-popup__input {
   flex: 1;
-  margin-left: 16rpx;
   font-size: 28rpx;
   color: $text-primary;
 }
 
 .search-popup__clear {
-  width: 36rpx; height: 36rpx;
+  width: 36rpx;
+  height: 36rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #e0e0e0;
+  background: #E2E8F0;
   border-radius: 50%;
 }
 
@@ -1893,7 +1525,6 @@ $bg-light: #FFFAF7;
 .search-popup__body {
   max-height: 60vh;
   padding: 20rpx 24rpx;
-  box-sizing: border-box;
 }
 
 .search-section {
@@ -1917,7 +1548,7 @@ $bg-light: #FFFAF7;
   font-size: 24rpx;
   color: $text-muted;
   padding: 6rpx 12rpx;
-  background: #f5f5f5;
+  background: #F1F5F9;
   border-radius: 16rpx;
 }
 
@@ -1929,18 +1560,21 @@ $bg-light: #FFFAF7;
 
 .search-tag {
   padding: 12rpx 28rpx;
-  background: #f5f5f5;
+  background: #F1F5F9;
   border-radius: 30rpx;
   font-size: 26rpx;
   color: $text-secondary;
 }
 
 .search-tag--hot {
-  background: rgba(255, 107, 53, 0.08);
+  background: rgba(37, 99, 235, 0.08);
   color: $primary;
 }
 
-/* 搜索建议 */
+.hot-icon {
+  margin-right: 8rpx;
+}
+
 .search-suggestions {
   padding: 0;
 }
@@ -1949,7 +1583,7 @@ $bg-light: #FFFAF7;
   font-size: 24rpx;
   color: $text-muted;
   padding: 8rpx 0 16rpx;
-  border-bottom: 1rpx solid #f5f5f5;
+  border-bottom: 1rpx solid #F1F5F9;
   margin-bottom: 8rpx;
 }
 
@@ -1957,14 +1591,14 @@ $bg-light: #FFFAF7;
   display: flex;
   align-items: center;
   padding: 20rpx 0;
-  border-bottom: 1rpx solid #f8f8f8;
-
-  &:active {
-    background: #fafafa;
-  }
+  border-bottom: 1rpx solid #F8FAFC;
 
   &:last-child {
     border-bottom: none;
+  }
+
+  &:active {
+    background: #FAFAFA;
   }
 }
 
@@ -1983,259 +1617,17 @@ $bg-light: #FFFAF7;
   white-space: nowrap;
 }
 
-.suggestion-category {
-  font-size: 22rpx;
-  color: $text-muted;
-  background: #f5f5f5;
-  padding: 4rpx 12rpx;
-  border-radius: 12rpx;
-  margin-left: 16rpx;
-}
-
 .suggestion-badge {
   font-size: 18rpx;
   color: #fff;
-  background: linear-gradient(135deg, $secondary, #36CFC9);
+  background: $secondary;
   padding: 4rpx 12rpx;
   border-radius: 12rpx;
   margin-left: 16rpx;
   font-weight: 600;
 }
 
-.search-suggestion-item--external {
-  background: rgba(78, 205, 196, 0.05);
-  border-left: 4rpx solid $secondary;
-}
-
-/* 搜索结果覆盖层 */
-.search-result-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: $bg-light;
-  z-index: 50;
-  display: flex;
-  flex-direction: column;
-}
-
-.search-result-scroll {
-  flex: 1;
-  overflow-y: auto;
-}
-
-.search-result-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 24rpx;
-  background: #fff;
-  border-bottom: 1rpx solid #f0f0f0;
-}
-
-.search-result-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4rpx;
-}
-
-.search-result-keyword {
-  font-size: 32rpx;
-  font-weight: 700;
-  color: $text-primary;
-}
-
-.search-result-count {
-  font-size: 24rpx;
-  color: $text-muted;
-}
-
-.search-result-back {
-  font-size: 28rpx;
-  color: $primary;
-  padding: 12rpx 24rpx;
-  background: rgba(255, 107, 53, 0.1);
-  border-radius: 24rpx;
-  font-weight: 600;
-}
-
-.search-result-list {
-  padding: 24rpx;
-}
-
-.search-result-item {
-  display: flex;
-  background: $glass-bg;
-  backdrop-filter: blur(20rpx);
-  border-radius: 20rpx;
-  overflow: hidden;
-  margin-bottom: 20rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
-  border: 1rpx solid rgba(255, 255, 255, 0.6);
-
-  &:active {
-    opacity: 0.9;
-    transform: scale(0.98);
-  }
-}
-
-.result-item__cover {
-  width: 200rpx;
-  height: 160rpx;
-  flex-shrink: 0;
-}
-
-.result-item__info {
-  flex: 1;
-  padding: 20rpx;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-.result-item__title {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: $text-primary;
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  margin-bottom: 8rpx;
-}
-
-.result-item__meta {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  margin-bottom: 4rpx;
-}
-
-.result-item__instructor,
-.result-item__category {
-  font-size: 22rpx;
-  color: $text-muted;
-  background: #f5f5f5;
-  padding: 4rpx 12rpx;
-  border-radius: 8rpx;
-}
-
-.result-item__footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: auto;
-}
-
-.result-item__price {
-  font-size: 36rpx;
-  font-weight: 700;
-  color: $primary;
-}
-
-.result-item__price--free {
-  color: $secondary;
-  font-size: 30rpx;
-}
-
-.result-item__title-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 12rpx;
-  margin-bottom: 8rpx;
-}
-
-.result-item__badge {
-  flex-shrink: 0;
-  padding: 4rpx 10rpx;
-  background: linear-gradient(135deg, $secondary, #36CFC9);
-  border-radius: 8rpx;
-  font-size: 18rpx;
-  font-weight: 600;
-  color: #fff;
-}
-
-.result-item__btn {
-  padding: 10rpx 24rpx;
-  background: $orange-gradient;
-  border-radius: 20rpx;
-
-  text {
-    font-size: 22rpx;
-    font-weight: 600;
-    color: #fff;
-  }
-}
-
-/* 外部课程样式 */
-.search-result-item--external {
-  border-left: 6rpx solid $secondary;
-
-  .result-item__btn {
-    background: linear-gradient(135deg, $secondary, #36CFC9);
-  }
-}
-
-/* 搜索结果空状态 */
-.search-empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 120rpx 0;
-}
-
-.search-empty-icon {
-  font-size: 100rpx;
-  margin-bottom: 24rpx;
-  opacity: 0.4;
-}
-
-.search-empty-text {
-  font-size: 28rpx;
-  color: $text-muted;
-  margin-bottom: 32rpx;
-}
-
-.search-empty-sub {
-  font-size: 24rpx;
-  color: $text-muted;
-  margin-top: -16rpx;
-  margin-bottom: 32rpx;
-}
-
-.search-empty-btn {
-  padding: 20rpx 48rpx;
-  background: $orange-gradient;
-  border-radius: 30rpx;
-
-  text {
-    font-size: 26rpx;
-    font-weight: 600;
-    color: #fff;
-  }
-}
-
-.search-empty__icon {
-  font-size: 48rpx;
-  margin-bottom: 16rpx;
-  opacity: 0.4;
-}
-
-.search-empty__sub {
-  font-size: 24rpx;
-  color: $text-muted;
-  margin-top: 8rpx;
-}
-
-.hot-icon {
-  margin-right: 8rpx;
-}
-
-/* 文本图标 */
+/* ========== 图标文本 ========== */
 .icon-text {
   font-size: 32rpx;
   display: flex;
@@ -2243,10 +1635,8 @@ $bg-light: #FFFAF7;
   justify-content: center;
 }
 
-.icon-text--search { font-size: 36rpx; }
-.icon-text--cart { font-size: 44rpx; }
-.icon-text--add { font-size: 36rpx; font-weight: 500; }
-.icon-text--close { font-size: 24rpx; }
-.icon-text--arrow-up, .icon-text--arrow-down { font-size: 24rpx; }
-.icon-text--minus { font-size: 32rpx; font-weight: 500; }
+.icon-text--search { font-size: 32rpx; }
+.icon-text--add { font-size: 32rpx; font-weight: 500; }
+.icon-text--close { font-size: 20rpx; }
+.icon-text--minus { font-size: 28rpx; font-weight: 500; }
 </style>

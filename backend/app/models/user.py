@@ -11,6 +11,7 @@ class User(Model):
     username = fields.CharField(max_length=50, unique=True, description="用户名")
     password = fields.CharField(max_length=255, description="密码（哈希存储）")
     role = fields.CharField(max_length=20, default="user", description="角色: admin/user")
+    balance = fields.DecimalField(max_digits=12, decimal_places=2, default=0, description="账户余额")
     created_at = fields.IntField(description="创建时间戳")
     updated_at = fields.IntField(description="更新时间戳")
 

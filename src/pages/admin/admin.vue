@@ -37,6 +37,20 @@
       >
         <text>分类管理</text>
       </view>
+      <view
+        class="tab-item"
+        :class="{ 'tab-item--active': activeTab === 'balance' }"
+        @tap="switchTab('balance')"
+      >
+        <text>余额管理</text>
+      </view>
+      <view
+        class="tab-item"
+        :class="{ 'tab-item--active': activeTab === 'homepage' }"
+        @tap="switchTab('homepage')"
+      >
+        <text>首页设置</text>
+      </view>
     </view>
 
     <view class="content">
@@ -64,14 +78,18 @@
 
           <view class="form__item">
             <text class="form__label">课程图片 *</text>
-            <view class="image-upload-btn" @tap="handleChooseImage">
+            <view class="image-upload-btn" @tap="showIntImageModalOpen">
               <image v-if="previewCover" class="image-preview" :src="previewCover" mode="aspectFill" />
               <view v-else class="image-placeholder">
                 <view class="image-placeholder__icon">
                   <text class="icon-text icon-text--upload">📷</text>
                 </view>
-                <text class="image-placeholder__text">点击上传图片</text>
+                <text class="image-placeholder__text">点击选择图片</text>
               </view>
+            </view>
+            <view class="selected-image-tip" v-if="previewCover">
+              <text class="tip-text">已选择封面图片</text>
+              <text class="tip-clear" @tap="clearIntCover">清除</text>
             </view>
           </view>
 
@@ -295,6 +313,29 @@
               </picker>
             </view>
 
+            <view class="form__row">
+              <view class="form__col">
+                <text class="form__label">价格(¥) *</text>
+                <input
+                  class="form__input"
+                  v-model="extForm.price"
+                  type="digit"
+                  placeholder="0表示免费"
+                  placeholder-class="form__placeholder"
+                />
+              </view>
+              <view class="form__col">
+                <text class="form__label">库存</text>
+                <input
+                  class="form__input"
+                  v-model="extForm.stock"
+                  type="number"
+                  placeholder="默认1"
+                  placeholder-class="form__placeholder"
+                />
+              </view>
+            </view>
+
             <view class="form__item">
               <text class="form__label">课程介绍</text>
               <textarea
@@ -319,8 +360,8 @@
           </view>
         </view>
 
-        <!-- 图片选择弹窗 -->
-        <view class="image-modal" v-if="showImageSelectModal" @tap="closeImageModal">
+        <!-- 图片选择弹窗（外部课程用） -->
+      <view class="image-modal" v-if="activeTab === 'external' && showImageSelectModal" @tap="closeImageModal">
           <view class="image-modal__content" @tap.stop>
             <view class="image-modal__header">
               <text class="image-modal__title">选择封面图片</text>
@@ -329,42 +370,57 @@
             <view class="image-modal__tabs">
               <view
                 class="tab-btn"
-                :class="{ 'tab-btn--active': imageTab === 'system' }"
-                @tap="imageTab = 'system'"
+                :class="{ 'tab-btn--active': extImageTab === 'system' }"
+                @tap="extImageTab = 'system'"
               >
                 <text>系统图片</text>
               </view>
               <view
                 class="tab-btn"
-                :class="{ 'tab-btn--active': imageTab === 'url' }"
-                @tap="imageTab = 'url'"
+                :class="{ 'tab-btn--active': extImageTab === 'upload' }"
+                @tap="extImageTab = 'upload'"
+              >
+                <text>上传图片</text>
+              </view>
+              <view
+                class="tab-btn"
+                :class="{ 'tab-btn--active': extImageTab === 'url' }"
+                @tap="extImageTab = 'url'"
               >
                 <text>输入URL</text>
               </view>
             </view>
             <!-- 系统图片列表 -->
-            <scroll-view class="image-grid" scroll-y v-if="imageTab === 'system'">
+            <scroll-view class="image-grid" scroll-y v-if="extImageTab === 'system'">
               <view class="image-grid__row">
                 <view
                   class="image-grid__item"
                   v-for="(img, idx) in systemImages"
                   :key="idx"
-                  @tap="selectSystemImage(img)"
+                  @tap="selectExtSystemImage(img)"
                 >
                   <image class="grid-image" :src="img" mode="aspectFill" />
                   <view class="grid-image__label">{{ systemImageLabels[idx] }}</view>
                 </view>
               </view>
             </scroll-view>
+            <!-- 上传图片 -->
+            <view class="upload-area" v-if="extImageTab === 'upload'">
+              <view class="upload-btn" @tap="handleUploadExtCover">
+                <text class="upload-icon">📷</text>
+                <text class="upload-text">点击上传封面图片</text>
+                <text class="upload-tip">支持 jpg, png, gif, webp</text>
+              </view>
+            </view>
             <!-- URL输入 -->
-            <view class="url-input-area" v-if="imageTab === 'url'">
+            <view class="url-input-area" v-if="extImageTab === 'url'">
               <input
                 class="form__input"
-                v-model="customImageUrl"
+                v-model="extCustomImageUrl"
                 placeholder="请输入图片URL"
                 placeholder-class="form__placeholder"
               />
-              <view class="btn btn--primary btn--small" @tap="confirmCustomUrl">
+              <view class="btn btn--primary btn--small" @tap="confirmExtCustomUrl">
                 <text>确定</text>
               </view>
             </view>
@@ -386,6 +442,8 @@
                 <view class="course-item__title">{{ item.title }}</view>
                 <view class="course-item__meta">
                   <text class="meta-tag meta-tag--external" v-if="item.category">{{ item.category }}</text>
+                  <text class="course-item__price" v-if="item.price > 0">¥{{ item.price }}</text>
+                  <text class="course-item__price course-item__price--free" v-else>免费</text>
                 </view>
                 <text class="course-item__link">{{ item.link }}</text>
               </view>
@@ -411,6 +469,70 @@
           <text class="empty__text">暂无外部课程</text>
         </view>
       </template>
+
+      <!-- 内部课程图片选择弹窗（仅内部课程 tab 可触发） -->
+      <view class="image-modal" v-if="activeTab === 'internal' && showIntImageModal" @tap="closeIntImageModal">
+        <view class="image-modal__content" @tap.stop>
+          <view class="image-modal__header">
+            <text class="image-modal__title">选择课程封面</text>
+            <text class="image-modal__close" @tap="closeIntImageModal">✕</text>
+          </view>
+          <view class="image-modal__tabs">
+            <view
+              class="tab-btn"
+              :class="{ 'tab-btn--active': intImageTab === 'system' }"
+              @tap="intImageTab = 'system'"
+            >
+              <text>系统图片</text>
+            </view>
+            <view
+              class="tab-btn"
+              :class="{ 'tab-btn--active': intImageTab === 'upload' }"
+              @tap="intImageTab = 'upload'"
+            >
+              <text>上传图片</text>
+            </view>
+            <view
+              class="tab-btn"
+              :class="{ 'tab-btn--active': intImageTab === 'url' }"
+              @tap="intImageTab = 'url'"
+            >
+              <text>输入URL</text>
+            </view>
+          </view>
+          <scroll-view class="image-grid" scroll-y v-if="intImageTab === 'system'">
+            <view class="image-grid__row">
+              <view
+                class="image-grid__item"
+                v-for="(img, idx) in systemImages"
+                :key="idx"
+                @tap="selectIntSystemImage(img)"
+              >
+                <image class="grid-image" :src="img" mode="aspectFill" />
+                <view class="grid-image__label">{{ systemImageLabels[idx] }}</view>
+              </view>
+            </view>
+          </scroll-view>
+          <view class="upload-area" v-if="intImageTab === 'upload'">
+            <view class="upload-btn" @tap="handleUploadIntCover">
+              <text class="upload-icon">📷</text>
+              <text class="upload-text">点击上传封面图片</text>
+              <text class="upload-tip">支持 jpg, png, gif, webp</text>
+            </view>
+          </view>
+          <view class="url-input-area" v-if="intImageTab === 'url'">
+            <input
+              class="form__input"
+              v-model="intCustomImageUrl"
+              placeholder="请输入图片URL"
+              placeholder-class="form__placeholder"
+            />
+            <view class="btn btn--primary btn--small" @tap="confirmIntCustomUrl">
+              <text>确定</text>
+            </view>
+          </view>
+        </view>
+      </view>
 
       <!-- ========== 分类管理 ========== -->
       <template v-if="activeTab === 'category'">
@@ -519,7 +641,277 @@
           <text class="empty__text">暂无分类</text>
         </view>
       </template>
+
+      <!-- ========== 余额管理 ========== -->
+      <template v-if="activeTab === 'balance'">
+        <!-- 用户余额列表 -->
+        <view class="card">
+          <view class="card__header">
+            <view class="card__icon card__icon--list">
+              <text class="icon-text">💰</text>
+            </view>
+            <text class="card__title">用户余额管理</text>
+          </view>
+
+          <!-- 搜索 -->
+          <view class="search-bar">
+            <input
+              class="search-input"
+              v-model="balanceKeyword"
+              placeholder="搜索用户名"
+              @confirm="searchUsers"
+            />
+            <view class="search-btn" @tap="searchUsers">
+              <text>搜索</text>
+            </view>
+          </view>
+
+          <!-- 用户列表 -->
+          <view class="user-list" v-if="balanceUserList.length > 0">
+            <view class="user-item" v-for="user in balanceUserList" :key="user.id">
+              <view class="user-item__info">
+                <view class="user-item__name">{{ user.username }}</view>
+                <view class="user-item__role" :class="'role--' + user.role">{{ user.role === 'admin' ? '管理员' : '用户' }}</view>
+                <view class="user-item__stats">
+                  <text>充值: ¥{{ user.total_recharge.toFixed(2) }}</text>
+                  <text>消费: ¥{{ user.total_consume.toFixed(2) }}</text>
+                </view>
+              </view>
+              <view class="user-item__balance">
+                <text class="balance-label">余额</text>
+                <text class="balance-value">¥{{ user.balance.toFixed(2) }}</text>
+              </view>
+              <view class="user-item__actions">
+                <view class="action-btn add" @tap="showAdjustModal(user, 'add')">
+                  <text>充值</text>
+                </view>
+                <view class="action-btn deduct" @tap="showAdjustModal(user, 'deduct')">
+                  <text>扣减</text>
+                </view>
+                <view class="action-btn detail" @tap="showUserTransactions(user.id)">
+                  <text>明细</text>
+                </view>
+              </view>
+            </view>
+          </view>
+
+          <!-- 空状态 -->
+          <view class="empty" v-else>
+            <view class="empty__icon">
+              <text class="empty-icon">👥</text>
+            </view>
+            <text class="empty__text">暂无用户</text>
+          </view>
+
+          <!-- 加载更多 -->
+          <view class="load-more" v-if="hasMoreUsers" @tap="loadMoreUsers">
+            <text>加载更多</text>
+          </view>
+        </view>
+
+        <!-- 调整余额弹窗 -->
+        <view class="modal" v-if="showAdjustDialog" @tap="closeAdjustModal">
+          <view class="modal__content" @tap.stop>
+            <view class="modal__header">
+              <text class="modal__title">{{ adjustType === 'add' ? '充值' : '扣减' }}余额</text>
+              <text class="modal__close" @tap="closeAdjustModal">✕</text>
+            </view>
+            <view class="modal__body">
+              <view class="modal__user">
+                <text>用户: {{ adjustUser?.username }}</text>
+                <text>当前余额: ¥{{ adjustUser?.balance?.toFixed(2) || '0.00' }}</text>
+              </view>
+              <view class="form__item">
+                <text class="form__label">{{ adjustType === 'add' ? '充值' : '扣减' }}金额</text>
+                <input
+                  class="form__input"
+                  v-model="adjustAmount"
+                  type="digit"
+                  :placeholder="adjustType === 'add' ? '请输入充值金额' : '请输入扣减金额'"
+                />
+              </view>
+              <view class="form__item">
+                <text class="form__label">备注</text>
+                <input
+                  class="form__input"
+                  v-model="adjustRemark"
+                  placeholder="请输入备注(可选)"
+                />
+              </view>
+              <view class="modal__actions">
+                <view class="btn btn--ghost" @tap="closeAdjustModal">
+                  <text>取消</text>
+                </view>
+                <view class="btn btn--primary" @tap="confirmAdjust">
+                  <text>确定</text>
+                </view>
+              </view>
+            </view>
+          </view>
+        </view>
+
+        <!-- 用户明细弹窗 -->
+        <view class="modal" v-if="showTransactionDialog" @tap="closeTransactionModal">
+          <view class="modal__content modal__content--large" @tap.stop>
+            <view class="modal__header">
+              <text class="modal__title">余额明细</text>
+              <text class="modal__close" @tap="closeTransactionModal">✕</text>
+            </view>
+            <scroll-view class="modal__body modal__body--scroll" scroll-y>
+              <view class="transaction-list" v-if="transactionList.length > 0">
+                <view class="transaction-item" v-for="t in transactionList" :key="t.id">
+                  <view class="transaction-item__left">
+                    <view class="transaction-type" :class="'type--' + t.type">{{ getTypeText(t.type) }}</view>
+                    <view class="transaction-remark">{{ t.remark || '余额变动' }}</view>
+                    <view class="transaction-time">{{ formatTime(t.created_at) }}</view>
+                  </view>
+                  <view class="transaction-item__right">
+                    <text class="transaction-amount" :class="t.amount > 0 ? 'amount-plus' : 'amount-minus'">
+                      {{ t.amount > 0 ? '+' : '' }}{{ t.amount.toFixed(2) }}
+                    </text>
+                    <text class="transaction-balance">余额: {{ t.balance_after.toFixed(2) }}</text>
+                  </view>
+                </view>
+              </view>
+              <view class="empty" v-else>
+                <text class="empty__text">暂无明细记录</text>
+              </view>
+            </scroll-view>
+          </view>
+        </view>
+      </template>
     </view>
+
+    <!-- ========== 首页设置 ========== -->
+    <template v-if="activeTab === 'homepage'">
+      <!-- 精选课程设置 -->
+      <view class="card">
+        <view class="card__header">
+          <view class="card__icon card__icon--featured">
+            <text class="icon-text">⭐</text>
+          </view>
+          <text class="card__title">精选课程设置</text>
+        </view>
+        <text class="section-desc">选择显示在首页"精选课程"区域的课程（最多4门）</text>
+
+        <!-- 内部课程 -->
+        <view class="section-sub-title">
+          <text>内部课程</text>
+        </view>
+        <view class="select-course-list">
+          <view
+            class="select-course-item"
+            :class="{ 'select-course-item--selected': selectedFeaturedIds.includes(course.id) }"
+            v-for="course in allCourses"
+            :key="'int-' + course.id"
+            @tap="toggleFeatured(course.id, 'internal')"
+          >
+            <image class="select-course-item__cover" :src="course.cover" mode="aspectFill" />
+            <view class="select-course-item__info">
+              <text class="select-course-item__title">{{ course.title }}</text>
+              <text class="select-course-item__category" v-if="course.category">{{ course.category }}</text>
+            </view>
+            <view class="select-course-item__check" :class="{ 'select-course-item__check--active': selectedFeaturedIds.includes(course.id) }">
+              <text class="check-icon">{{ selectedFeaturedIds.includes(course.id) ? '✓' : '' }}</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- 外部课程 -->
+        <view class="section-sub-title">
+          <text>外部课程</text>
+        </view>
+        <view class="select-course-list">
+          <view
+            class="select-course-item"
+            :class="{ 'select-course-item--selected': selectedFeaturedExtIds.includes(course.id) }"
+            v-for="course in allExternalCourses"
+            :key="'ext-' + course.id"
+            @tap="toggleFeatured(course.id, 'external')"
+          >
+            <image class="select-course-item__cover" :src="course.cover || getExtCategoryCover(course.category)" mode="aspectFill" />
+            <view class="select-course-item__info">
+              <text class="select-course-item__title">{{ course.title }}</text>
+              <text class="select-course-item__category" v-if="course.category">{{ course.category }}</text>
+            </view>
+            <view class="select-course-item__check select-course-item__check--ext" :class="{ 'select-course-item__check--active': selectedFeaturedExtIds.includes(course.id) }">
+              <text class="check-icon">{{ selectedFeaturedExtIds.includes(course.id) ? '✓' : '' }}</text>
+            </view>
+          </view>
+        </view>
+
+        <view class="form__actions">
+          <view class="btn btn--primary" @tap="saveFeatured">
+            <text class="btn-icon">✓</text>
+            <text>保存精选课程</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 热门课程设置 -->
+      <view class="card">
+        <view class="card__header">
+          <view class="card__icon card__icon--hot">
+            <text class="icon-text">🔥</text>
+          </view>
+          <text class="card__title">热门课程设置</text>
+        </view>
+        <text class="section-desc">选择显示在首页"热门课程"区域的课程（最多4门）</text>
+
+        <!-- 内部课程 -->
+        <view class="section-sub-title">
+          <text>内部课程</text>
+        </view>
+        <view class="select-course-list">
+          <view
+            class="select-course-item"
+            :class="{ 'select-course-item--selected': selectedHotIds.includes(course.id) }"
+            v-for="course in allCourses"
+            :key="'hot-int-' + course.id"
+            @tap="toggleHot(course.id, 'internal')"
+          >
+            <image class="select-course-item__cover" :src="course.cover" mode="aspectFill" />
+            <view class="select-course-item__info">
+              <text class="select-course-item__title">{{ course.title }}</text>
+              <text class="select-course-item__category" v-if="course.category">{{ course.category }}</text>
+            </view>
+            <view class="select-course-item__check" :class="{ 'select-course-item__check--active': selectedHotIds.includes(course.id) }">
+              <text class="check-icon">{{ selectedHotIds.includes(course.id) ? '✓' : '' }}</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- 外部课程 -->
+        <view class="section-sub-title">
+          <text>外部课程</text>
+        </view>
+        <view class="select-course-list">
+          <view
+            class="select-course-item"
+            :class="{ 'select-course-item--selected': selectedHotExtIds.includes(course.id) }"
+            v-for="course in allExternalCourses"
+            :key="'hot-ext-' + course.id"
+            @tap="toggleHot(course.id, 'external')"
+          >
+            <image class="select-course-item__cover" :src="course.cover || getExtCategoryCover(course.category)" mode="aspectFill" />
+            <view class="select-course-item__info">
+              <text class="select-course-item__title">{{ course.title }}</text>
+              <text class="select-course-item__category" v-if="course.category">{{ course.category }}</text>
+            </view>
+            <view class="select-course-item__check select-course-item__check--ext" :class="{ 'select-course-item__check--active': selectedHotExtIds.includes(course.id) }">
+              <text class="check-icon">{{ selectedHotExtIds.includes(course.id) ? '✓' : '' }}</text>
+            </view>
+          </view>
+        </view>
+
+        <view class="form__actions">
+          <view class="btn btn--primary" @tap="saveHot">
+            <text class="btn-icon">✓</text>
+            <text>保存热门课程</text>
+          </view>
+        </view>
+      </view>
+    </template>
   </view>
 </template>
 
@@ -536,16 +928,13 @@ import {
   updateCategory,
   deleteCategory
 } from '@/utils/external-course.js'
+import { request } from '@/utils/request.js'
 
 const statusBarHeight = ref(0)
 const navHeight = ref(88)
 
 // ========== 标签页切换 ==========
 const activeTab = ref('internal')
-
-const switchTab = (tab) => {
-  activeTab.value = tab
-}
 
 const form = ref({
   title: '',
@@ -621,7 +1010,7 @@ const categoryOptions = ref([
   { value: '职业技能', name: '💼 职业技能' },
 ])
 
-// 默认44个分类
+// 默认44个分类（老年大学课程分类）
 const defaultCategories = [
   { id: 1, name: '公民素养', icon: '🏛️', color: '#4A90D9' },
   { id: 2, name: '时代前沿', icon: '🚀', color: '#7B68EE' },
@@ -745,27 +1134,153 @@ const onCategoryChange = (e) => {
 }
 
 const handleChooseImage = () => {
+  showIntImageModal()
+}
+
+// 内部课程图片选择
+const showIntImageModal = ref(false)
+const intImageTab = ref('system')
+const intCustomImageUrl = ref('')
+
+const showIntImageModalOpen = () => {
+  showIntImageModal.value = true
+  intImageTab.value = 'system'
+  intCustomImageUrl.value = ''
+}
+
+const closeIntImageModal = () => {
+  showIntImageModal.value = false
+}
+
+const selectIntSystemImage = (url) => {
+  previewCover.value = url
+  form.value.cover = url
+  showIntImageModal.value = false
+  uni.showToast({ title: '图片已选择', icon: 'success' })
+}
+
+const confirmIntCustomUrl = () => {
+  if (!intCustomImageUrl.value.trim()) {
+    uni.showToast({ title: '请输入图片URL', icon: 'none' })
+    return
+  }
+  previewCover.value = intCustomImageUrl.value.trim()
+  form.value.cover = intCustomImageUrl.value.trim()
+  showIntImageModal.value = false
+  uni.showToast({ title: '图片已设置', icon: 'success' })
+}
+
+// 上传内部课程封面图片
+const handleUploadIntCover = () => {
   uni.chooseImage({
     count: 1,
+    sourceType: ['album', 'camera'],
     success: async (res) => {
       const tempFilePath = res.tempFilePaths[0]
-      previewCover.value = tempFilePath
-      form.value.cover = tempFilePath
+      if (!tempFilePath) {
+        uni.showToast({ title: '请选择图片', icon: 'none' })
+        return
+      }
+
+      uni.showLoading({ title: '上传中...' })
+      try {
+        const uploadRes = await new Promise((resolve, reject) => {
+          uni.uploadFile({
+            url: '/api/upload/image',
+            filePath: tempFilePath,
+            name: 'file',
+            success: (resp) => {
+              try {
+                const parsed = typeof resp.data === 'string' ? JSON.parse(resp.data) : resp.data
+                resolve({ ...parsed, statusCode: resp.statusCode })
+              } catch (e) {
+                reject(new Error('解析响应失败'))
+              }
+            },
+            fail: (err) => {
+              reject(new Error(err.errMsg || '上传失败'))
+            }
+          })
+        })
+
+        if (uploadRes.statusCode === 200 && uploadRes.ok) {
+          previewCover.value = uploadRes.url
+          form.value.cover = uploadRes.url
+          showIntImageModal.value = false
+          uni.hideLoading()
+          uni.showToast({ title: '封面上传成功', icon: 'success' })
+        } else {
+          uni.hideLoading()
+          uni.showToast({ title: uploadRes.detail || '上传失败', icon: 'none', duration: 3000 })
+        }
+      } catch (err) {
+        uni.hideLoading()
+        console.error('封面上传失败:', err)
+        uni.showToast({ title: '上传失败: ' + err.message, icon: 'none', duration: 2500 })
+      }
+    },
+    fail: (err) => {
+      console.error('选择图片失败:', err)
+      uni.showToast({ title: '请选择图片', icon: 'none' })
     }
   })
+}
+
+const clearIntCover = () => {
+  previewCover.value = ''
+  form.value.cover = ''
 }
 
 // 选择视频
 const handleChooseVideo = () => {
   uni.chooseVideo({
     sourceType: ['album', 'camera'],
-    maxDuration: 600, // 最大10分钟
+    maxDuration: 600,
     camera: 'back',
     success: async (res) => {
       const tempFilePath = res.tempFilePath
-      form.value.videoUrl = tempFilePath
-      // 显示提示：实际项目中需要上传到云存储
-      uni.showToast({ title: '视频已选择，上传功能待配置', icon: 'none', duration: 2500 })
+      if (!tempFilePath) {
+        uni.showToast({ title: '视频文件无效', icon: 'none' })
+        return
+      }
+
+      uni.showLoading({ title: '上传中...' })
+      try {
+        // 上传到后端（不手动设置 Content-Type，uni 会自动加上正确的 multipart boundary）
+        const uploadRes = await new Promise((resolve, reject) => {
+          uni.uploadFile({
+            url: '/api/upload/video',
+            filePath: tempFilePath,
+            name: 'file',
+            success: (resp) => {
+              // uni.uploadFile 成功回调的 resp = { statusCode, data, header }
+              try {
+                const parsed = typeof resp.data === 'string' ? JSON.parse(resp.data) : resp.data
+                resolve({ ...parsed, statusCode: resp.statusCode })
+              } catch (e) {
+                reject(new Error('解析响应失败'))
+              }
+            },
+            fail: (err) => {
+              reject(new Error(err.errMsg || '上传失败'))
+            }
+          })
+        })
+
+        if (uploadRes.statusCode === 200 && uploadRes.ok) {
+          // 保存返回的URL（相对路径，前端通过 /uploads/... 访问）
+          form.value.videoUrl = uploadRes.url
+          uni.hideLoading()
+          uni.showToast({ title: '视频上传成功', icon: 'success' })
+        } else {
+          uni.hideLoading()
+          uni.showToast({ title: uploadRes.detail || '上传失败(' + (uploadRes.statusCode || '') + ')', icon: 'none', duration: 3000 })
+        }
+      } catch (err) {
+        uni.hideLoading()
+        console.error('视频上传失败:', err)
+        uni.showToast({ title: '上传失败: ' + err.message, icon: 'none', duration: 2500 })
+      }
     },
     fail: (err) => {
       console.error('选择视频失败:', err)
@@ -817,6 +1332,7 @@ const handleAdd = async () => {
   const course = {
     title: form.value.title.trim(),
     cover: form.value.cover.trim(),
+    video_url: form.value.videoUrl?.trim() || null,
     price: priceNow,
     price_now: priceNow,
     price_now_str: String(priceNow),
@@ -946,7 +1462,9 @@ const extForm = ref({
   cover: '',
   link: '',
   description: '',
-  category: ''
+  category: '',
+  price: '0',
+  stock: '1'
 })
 
 const externalList = ref([])
@@ -985,10 +1503,10 @@ const handleChooseExtImage = () => {
   showImageModal()
 }
 
-// 图片选择弹窗
+// 外部课程图片选择弹窗（独立变量，避免与内部课程冲突）
 const showImageSelectModal = ref(false)
-const imageTab = ref('system')
-const customImageUrl = ref('')
+const extImageTab = ref('system')
+const extCustomImageUrl = ref('')
 
 const systemImageLabels = [
   '公民素养', '传统文化', '时事思政', '哲学', '数字素养', '摄影', '表演', '社会科学', '自然科学', '农学', '语言', '数学'
@@ -996,28 +1514,28 @@ const systemImageLabels = [
 
 const showImageModal = () => {
   showImageSelectModal.value = true
-  imageTab.value = 'system'
-  customImageUrl.value = ''
+  extImageTab.value = 'system'
+  extCustomImageUrl.value = ''
 }
 
 const closeImageModal = () => {
   showImageSelectModal.value = false
 }
 
-const selectSystemImage = (url) => {
+const selectExtSystemImage = (url) => {
   previewExtCover.value = url
   extForm.value.cover = url
   showImageSelectModal.value = false
   uni.showToast({ title: '图片已选择', icon: 'success' })
 }
 
-const confirmCustomUrl = () => {
-  if (!customImageUrl.value.trim()) {
+const confirmExtCustomUrl = () => {
+  if (!extCustomImageUrl.value.trim()) {
     uni.showToast({ title: '请输入图片URL', icon: 'none' })
     return
   }
-  previewExtCover.value = customImageUrl.value.trim()
-  extForm.value.cover = customImageUrl.value.trim()
+  previewExtCover.value = extCustomImageUrl.value.trim()
+  extForm.value.cover = extCustomImageUrl.value.trim()
   showImageSelectModal.value = false
   uni.showToast({ title: '图片已设置', icon: 'success' })
 }
@@ -1025,6 +1543,62 @@ const confirmCustomUrl = () => {
 const clearExtCover = () => {
   previewExtCover.value = ''
   extForm.value.cover = ''
+}
+
+// 上传外部课程封面图片
+const handleUploadExtCover = () => {
+  uni.chooseImage({
+    count: 1,
+    sourceType: ['album', 'camera'],
+    success: async (res) => {
+      const tempFilePath = res.tempFilePaths[0]
+      if (!tempFilePath) {
+        uni.showToast({ title: '请选择图片', icon: 'none' })
+        return
+      }
+
+      uni.showLoading({ title: '上传中...' })
+      try {
+        const uploadRes = await new Promise((resolve, reject) => {
+          uni.uploadFile({
+            url: '/api/upload/image',
+            filePath: tempFilePath,
+            name: 'file',
+            success: (resp) => {
+              try {
+                const parsed = typeof resp.data === 'string' ? JSON.parse(resp.data) : resp.data
+                resolve({ ...parsed, statusCode: resp.statusCode })
+              } catch (e) {
+                reject(new Error('解析响应失败'))
+              }
+            },
+            fail: (err) => {
+              reject(new Error(err.errMsg || '上传失败'))
+            }
+          })
+        })
+
+        if (uploadRes.statusCode === 200 && uploadRes.ok) {
+          previewExtCover.value = uploadRes.url
+          extForm.value.cover = uploadRes.url
+          showImageSelectModal.value = false
+          uni.hideLoading()
+          uni.showToast({ title: '封面上传成功', icon: 'success' })
+        } else {
+          uni.hideLoading()
+          uni.showToast({ title: uploadRes.detail || '上传失败', icon: 'none', duration: 3000 })
+        }
+      } catch (err) {
+        uni.hideLoading()
+        console.error('封面上传失败:', err)
+        uni.showToast({ title: '上传失败: ' + err.message, icon: 'none', duration: 2500 })
+      }
+    },
+    fail: (err) => {
+      console.error('选择图片失败:', err)
+      uni.showToast({ title: '请选择图片', icon: 'none' })
+    }
+  })
 }
 
 const loadExternalCourses = async () => {
@@ -1048,12 +1622,17 @@ const handleExtSubmit = async () => {
     return
   }
 
+  const price = parseFloat(extForm.value.price) || 0
+  const stock = parseInt(extForm.value.stock) || 1
+
   const data = {
     title: extForm.value.title.trim(),
     cover: extForm.value.cover?.trim() || '',
     link: extForm.value.link.trim(),
     description: extForm.value.description?.trim() || '',
-    category: selectedExtCategory.value
+    category: selectedExtCategory.value,
+    price: price,
+    stock: stock
   }
 
   let result
@@ -1081,7 +1660,9 @@ const handleExtEdit = (index) => {
     cover: course.cover || '',
     link: course.link || '',
     description: course.description || '',
-    category: course.category || ''
+    category: course.category || '',
+    price: String(course.price || 0),
+    stock: String(course.stock || 1)
   }
   selectedExtCategory.value = course.category || ''
   previewExtCover.value = course.cover || ''
@@ -1091,7 +1672,7 @@ const handleExtEdit = (index) => {
 const cancelExtEdit = () => {
   isEditingExternal.value = false
   editingExtId.value = ''
-  extForm.value = { title: '', cover: '', link: '', description: '', category: '' }
+  extForm.value = { title: '', cover: '', link: '', description: '', category: '', price: '0', stock: '1' }
   selectedExtCategory.value = ''
   previewExtCover.value = ''
 }
@@ -1247,6 +1828,16 @@ const loadExternalCategories = async () => {
   await loadCategories()
 }
 
+// 标签页切换时加载余额管理数据
+const switchTab = (tab) => {
+  activeTab.value = tab
+  if (tab === 'balance') {
+    loadBalanceUsers(1, false)
+  } else if (tab === 'homepage') {
+    loadHomepageSettings()
+  }
+}
+
 const handleCatSubmit = async () => {
   if (!catForm.value.name || !catForm.value.name.trim()) {
     toast('请输入分类名称')
@@ -1308,6 +1899,271 @@ const handleCatDelete = async (index) => {
       }
     }
   })
+}
+
+// ========== 余额管理 ==========
+const balanceKeyword = ref('')
+const balanceUserList = ref([])
+const balancePage = ref(1)
+const hasMoreUsers = ref(true)
+
+const showAdjustDialog = ref(false)
+const adjustUser = ref(null)
+const adjustType = ref('add')
+const adjustAmount = ref('')
+const adjustRemark = ref('')
+
+const showTransactionDialog = ref(false)
+const transactionList = ref([])
+const transactionUserId = ref(null)
+
+const loadBalanceUsers = async (page = 1, append = false) => {
+  try {
+    const res = await request.get('/api/balance/admin/users', {
+      page: page,
+      page_size: 20,
+      keyword: balanceKeyword.value
+    })
+    if (append) {
+      balanceUserList.value = [...balanceUserList.value, ...res.list]
+    } else {
+      balanceUserList.value = res.list || []
+    }
+    hasMoreUsers.value = balanceUserList.value.length < res.total
+    balancePage.value = page
+  } catch (e) {
+    console.error('加载用户余额失败', e)
+  }
+}
+
+const searchUsers = () => {
+  balancePage.value = 1
+  loadBalanceUsers(1, false)
+}
+
+const loadMoreUsers = () => {
+  if (hasMoreUsers.value) {
+    loadBalanceUsers(balancePage.value + 1, true)
+  }
+}
+
+const showAdjustModal = (user, type) => {
+  adjustUser.value = user
+  adjustType.value = type
+  adjustAmount.value = ''
+  adjustRemark.value = ''
+  showAdjustDialog.value = true
+}
+
+const closeAdjustModal = () => {
+  showAdjustDialog.value = false
+  adjustUser.value = null
+}
+
+const confirmAdjust = async () => {
+  const amount = parseFloat(adjustAmount.value)
+  if (!amount || amount <= 0) {
+    toast('请输入有效金额')
+    return
+  }
+
+  const reqAmount = adjustType.value === 'deduct' ? -amount : amount
+
+  try {
+    await request.post('/api/balance/admin/adjust', {
+      user_id: adjustUser.value.id,
+      amount: reqAmount,
+      remark: adjustRemark.value
+    })
+    toast(adjustType.value === 'add' ? '充值成功' : '扣减成功')
+    closeAdjustModal()
+    loadBalanceUsers(1, false)
+  } catch (e) {
+    toast(e.detail || '操作失败')
+  }
+}
+
+const showUserTransactions = async (userId) => {
+  transactionUserId.value = userId
+  try {
+    const res = await request.get(`/api/balance/admin/transactions/${userId}`, {
+      page: 1,
+      page_size: 50
+    })
+    transactionList.value = res.list || []
+    showTransactionDialog.value = true
+  } catch (e) {
+    toast('加载明细失败')
+  }
+}
+
+const closeTransactionModal = () => {
+  showTransactionDialog.value = false
+  transactionList.value = []
+}
+
+const getTypeText = (type) => {
+  const map = {
+    recharge: '充值',
+    purchase: '购买',
+    admin_add: '管理员充值',
+    admin_deduct: '管理员扣减',
+    withdraw: '提现'
+  }
+  return map[type] || type
+}
+
+const formatTime = (timestamp) => {
+  if (!timestamp) return ''
+  const date = new Date(timestamp)
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
+// ========== 首页设置 ==========
+const allCourses = ref([])
+const allExternalCourses = ref([])
+const selectedFeaturedIds = ref([])
+const selectedFeaturedExtIds = ref([])
+const selectedHotIds = ref([])
+const selectedHotExtIds = ref([])
+
+const loadAllCourses = async () => {
+  try {
+    const res = await getAdminCourses()
+    allCourses.value = res.filter(c => !c.deleted)
+  } catch (e) {
+    console.error('加载课程失败:', e)
+  }
+}
+
+const loadAllExternalCourses = async () => {
+  try {
+    const res = await getExternalCourses()
+    allExternalCourses.value = res?.list || []
+  } catch (e) {
+    console.error('加载外部课程失败:', e)
+  }
+}
+
+const toggleFeatured = (courseId, type) => {
+  if (type === 'external') {
+    const idx = selectedFeaturedExtIds.value.indexOf(courseId)
+    if (idx > -1) {
+      selectedFeaturedExtIds.value.splice(idx, 1)
+    } else {
+      if (selectedFeaturedExtIds.value.length >= 4) {
+        toast('精选课程最多选择4门')
+        return
+      }
+      selectedFeaturedExtIds.value.push(courseId)
+    }
+  } else {
+    const idx = selectedFeaturedIds.value.indexOf(courseId)
+    if (idx > -1) {
+      selectedFeaturedIds.value.splice(idx, 1)
+    } else {
+      if (selectedFeaturedIds.value.length >= 4) {
+        toast('精选课程最多选择4门')
+        return
+      }
+      selectedFeaturedIds.value.push(courseId)
+    }
+  }
+}
+
+const toggleHot = (courseId, type) => {
+  if (type === 'external') {
+    const idx = selectedHotExtIds.value.indexOf(courseId)
+    if (idx > -1) {
+      selectedHotExtIds.value.splice(idx, 1)
+    } else {
+      if (selectedHotExtIds.value.length >= 4) {
+        toast('热门课程最多选择4门')
+        return
+      }
+      selectedHotExtIds.value.push(courseId)
+    }
+  } else {
+    const idx = selectedHotIds.value.indexOf(courseId)
+    if (idx > -1) {
+      selectedHotIds.value.splice(idx, 1)
+    } else {
+      if (selectedHotIds.value.length >= 4) {
+        toast('热门课程最多选择4门')
+        return
+      }
+      selectedHotIds.value.push(courseId)
+    }
+  }
+}
+
+const saveFeatured = async () => {
+  try {
+    // 保存内部精选课程
+    await request.post('/api/courses/set-featured', {
+      course_ids: selectedFeaturedIds.value
+    })
+    // 保存外部精选课程
+    await request.post('/api/external-courses/set-featured', {
+      course_ids: selectedFeaturedExtIds.value
+    })
+    toast('精选课程已保存')
+  } catch (e) {
+    toast('保存失败')
+  }
+}
+
+const saveHot = async () => {
+  try {
+    // 保存内部热门课程
+    await request.post('/api/courses/set-hot', {
+      course_ids: selectedHotIds.value
+    })
+    // 保存外部热门课程
+    await request.post('/api/external-courses/set-hot', {
+      course_ids: selectedHotExtIds.value
+    })
+    toast('热门课程已保存')
+  } catch (e) {
+    toast('保存失败')
+  }
+}
+
+const loadHomepageSettings = async () => {
+  await loadAllCourses()
+  await loadAllExternalCourses()
+
+  // 加载当前精选内部课程
+  try {
+    const featuredRes = await request.get('/api/courses/featured/list')
+    selectedFeaturedIds.value = (featuredRes?.list || []).map(c => c.id)
+  } catch (e) {
+    console.error('加载精选课程失败:', e)
+  }
+
+  // 加载当前精选外部课程
+  try {
+    const featuredExtRes = await request.get('/api/external-courses/featured/list')
+    selectedFeaturedExtIds.value = (featuredExtRes?.list || []).map(c => c.id)
+  } catch (e) {
+    console.error('加载外部精选课程失败:', e)
+  }
+
+  // 加载当前热门内部课程
+  try {
+    const hotRes = await request.get('/api/courses/hot/list')
+    selectedHotIds.value = (hotRes?.list || []).map(c => c.id)
+  } catch (e) {
+    console.error('加载热门课程失败:', e)
+  }
+
+  // 加载当前热门外部课程
+  try {
+    const hotExtRes = await request.get('/api/external-courses/hot/list')
+    selectedHotExtIds.value = (hotExtRes?.list || []).map(c => c.id)
+  } catch (e) {
+    console.error('加载外部热门课程失败:', e)
+  }
 }
 </script>
 
@@ -2077,6 +2933,47 @@ $glass-bg: rgba(255, 255, 255, 0.75);
   border-radius: 36rpx;
 }
 
+/* 上传图片区域 */
+.upload-area {
+  padding: 32rpx 0;
+  display: flex;
+  justify-content: center;
+}
+
+.upload-btn {
+  width: 320rpx;
+  height: 320rpx;
+  border: 2rpx dashed $border-color;
+  border-radius: 24rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16rpx;
+  background: linear-gradient(135deg, #faf9f7, #f5f3f0);
+  transition: all 0.3s;
+
+  &:active {
+    border-color: $primary;
+    background: rgba(255, 107, 53, 0.05);
+  }
+}
+
+.upload-icon {
+  font-size: 80rpx;
+}
+
+.upload-text {
+  font-size: 28rpx;
+  color: $text;
+  font-weight: 500;
+}
+
+.upload-tip {
+  font-size: 22rpx;
+  color: $sub;
+}
+
 /* 已选图片提示 */
 .selected-image-tip {
   display: flex;
@@ -2097,5 +2994,432 @@ $glass-bg: rgba(255, 255, 255, 0.75);
   font-size: 24rpx;
   color: #ff3b30;
   font-weight: 500;
+}
+
+/* 余额管理样式 */
+.search-bar {
+  display: flex;
+  gap: 16rpx;
+  margin-bottom: 24rpx;
+}
+
+.search-input {
+  flex: 1;
+  height: 80rpx;
+  background: #f5f5f5;
+  border-radius: 16rpx;
+  padding: 0 24rpx;
+  font-size: 28rpx;
+}
+
+.search-btn {
+  width: 120rpx;
+  height: 80rpx;
+  background: linear-gradient(135deg, $primary 0%, $primary-light 100%);
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 28rpx;
+  font-weight: 500;
+}
+
+.user-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.user-item {
+  display: flex;
+  align-items: center;
+  padding: 24rpx;
+  background: linear-gradient(135deg, #faf9f7, #f8f6f3);
+  border-radius: 20rpx;
+  gap: 16rpx;
+}
+
+.user-item__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.user-item__name {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: $text;
+  margin-bottom: 8rpx;
+}
+
+.user-item__role {
+  display: inline-block;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  font-size: 22rpx;
+  margin-bottom: 8rpx;
+}
+
+.role--admin {
+  background: rgba(255, 144, 0, 0.1);
+  color: $primary;
+}
+
+.role--user {
+  background: rgba(78, 205, 196, 0.1);
+  color: $secondary;
+}
+
+.user-item__stats {
+  display: flex;
+  gap: 16rpx;
+  font-size: 22rpx;
+  color: $text-body;
+}
+
+.user-item__balance {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12rpx 20rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  min-width: 120rpx;
+}
+
+.balance-label {
+  font-size: 22rpx;
+  color: $text-body;
+  margin-bottom: 4rpx;
+}
+
+.balance-value {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: $primary;
+}
+
+.user-item__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.action-btn {
+  padding: 10rpx 16rpx;
+  border-radius: 10rpx;
+  font-size: 24rpx;
+  text-align: center;
+}
+
+.action-btn.add {
+  background: rgba(78, 205, 196, 0.15);
+  color: $secondary;
+}
+
+.action-btn.deduct {
+  background: rgba(255, 59, 48, 0.1);
+  color: #ff3b30;
+}
+
+.action-btn.detail {
+  background: rgba(100, 100, 100, 0.1);
+  color: $text-body;
+}
+
+.load-more {
+  text-align: center;
+  padding: 24rpx;
+  color: $primary;
+  font-size: 28rpx;
+}
+
+/* 弹窗样式 */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal__content {
+  width: 600rpx;
+  background: #fff;
+  border-radius: 24rpx;
+  overflow: hidden;
+  animation: slideUpFade 0.3s ease;
+}
+
+.modal__content--large {
+  width: 700rpx;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 32rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.modal__title {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: $text;
+}
+
+.modal__close {
+  width: 56rpx;
+  height: 56rpx;
+  background: #f5f5f5;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  color: $sub;
+}
+
+.modal__body {
+  padding: 32rpx;
+}
+
+.modal__body--scroll {
+  flex: 1;
+  overflow: hidden;
+  max-height: 60vh;
+}
+
+.modal__user {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  padding: 16rpx 20rpx;
+  background: #f9f9f9;
+  border-radius: 12rpx;
+  margin-bottom: 24rpx;
+  font-size: 28rpx;
+  color: $text-body;
+}
+
+.modal__actions {
+  display: flex;
+  gap: 20rpx;
+  margin-top: 32rpx;
+}
+
+/* 交易明细样式 */
+.transaction-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.transaction-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.transaction-item__left {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.transaction-type {
+  display: inline-block;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  font-size: 22rpx;
+  font-weight: 500;
+  width: fit-content;
+}
+
+.type--recharge {
+  background: #E8F5E9;
+  color: #4CAF50;
+}
+
+.type--purchase {
+  background: #FFF3E0;
+  color: #FF9800;
+}
+
+.type--admin_add {
+  background: #E3F2FD;
+  color: #2196F3;
+}
+
+.type--admin_deduct {
+  background: #FFEBEE;
+  color: #F44336;
+}
+
+.transaction-remark {
+  font-size: 28rpx;
+  color: $text;
+}
+
+.transaction-time {
+  font-size: 24rpx;
+  color: $sub;
+}
+
+.transaction-item__right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8rpx;
+}
+
+.transaction-amount {
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.amount-plus {
+  color: #4CAF50;
+}
+
+.amount-minus {
+  color: $text;
+}
+
+.transaction-balance {
+  font-size: 24rpx;
+  color: $sub;
+}
+
+/* 首页设置样式 */
+.section-desc {
+  display: block;
+  font-size: 24rpx;
+  color: $sub;
+  margin-bottom: 20rpx;
+  padding: 12rpx 16rpx;
+  background: #f9f9f9;
+  border-radius: 12rpx;
+}
+
+.select-course-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  margin-bottom: 24rpx;
+}
+
+.select-course-item {
+  display: flex;
+  align-items: center;
+  padding: 16rpx;
+  background: #f9f9f9;
+  border-radius: 16rpx;
+  border: 2rpx solid transparent;
+  transition: all 0.3s;
+
+  &--selected {
+    background: rgba(255, 107, 53, 0.08);
+    border-color: $primary;
+  }
+
+  &__cover {
+    width: 80rpx;
+    height: 80rpx;
+    border-radius: 12rpx;
+    margin-right: 16rpx;
+    flex-shrink: 0;
+    object-fit: cover;
+  }
+
+  &__info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__title {
+    display: block;
+    font-size: 26rpx;
+    color: $text;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-bottom: 4rpx;
+  }
+
+  &__category {
+    font-size: 22rpx;
+    color: $sub;
+  }
+
+  &__check {
+    width: 48rpx;
+    height: 48rpx;
+    border-radius: 50%;
+    border: 2rpx solid #ddd;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 16rpx;
+    flex-shrink: 0;
+    transition: all 0.3s;
+
+    &--active {
+      background: $primary;
+      border-color: $primary;
+    }
+
+    &--hot {
+      &.select-course-item__check--active {
+        background: linear-gradient(135deg, #FF6B35, #FF9F5A);
+      }
+    }
+
+    .check-icon {
+      font-size: 24rpx;
+      color: #fff;
+      font-weight: 700;
+    }
+  }
+}
+
+.card__icon--featured {
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+}
+
+.card__icon--hot {
+  background: linear-gradient(135deg, #FF6B35, #FF9F5A);
+}
+
+.section-sub-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: $text;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+  margin-bottom: 12rpx;
+
+  text {
+    color: $text-secondary;
+  }
+}
+
+.select-course-item__check--ext {
+  &.select-course-item__check--active {
+    background: $secondary;
+    border-color: $secondary;
+  }
 }
 </style>

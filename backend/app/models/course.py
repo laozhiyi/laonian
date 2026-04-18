@@ -27,6 +27,9 @@ class Course(Model):
     video_url = fields.CharField(max_length=500, null=True, description="视频地址")
     status = fields.CharField(max_length=20, default="on", description="状态: on/off")
     sales = fields.IntField(default=0, description="销量")
+    # 精选和热门标识
+    is_featured = fields.BooleanField(default=False, description="是否精选课程")
+    is_hot = fields.BooleanField(default=False, description="是否热门课程")
     created_at = fields.IntField(description="创建时间戳")
     updated_at = fields.IntField(description="更新时间戳")
 

@@ -2,7 +2,8 @@
 外部课程路由
 """
 import time
-from fastapi import APIRouter, HTTPException, Query
+from typing import Optional, List
+from fastapi import APIRouter, HTTPException, Query, Body
 
 from app.models.external_course import ExternalCourse, CourseCategory
 
@@ -18,6 +19,8 @@ def _c(course):
         "link": course.link,
         "description": course.description,
         "category": course.category,
+        "price": float(getattr(course, 'price', 0) or 0),
+        "stock": getattr(course, 'stock', 1) or 1,
         "sort": course.sort,
         "status": course.status,
     }
@@ -123,6 +126,8 @@ async def create_course(
     link: str = None,
     description: str = None,
     category: str = None,
+    price: float = 0,
+    stock: int = 1,
     sort: int = 0,
 ):
     """创建外部课程"""
@@ -133,6 +138,8 @@ async def create_course(
         link=link,
         description=description,
         category=category,
+        price=price,
+        stock=stock,
         sort=sort,
         status="on",
         created_at=now,
@@ -149,8 +156,12 @@ async def update_course(
     link: str = None,
     description: str = None,
     category: str = None,
+    price: float = None,
+    stock: int = None,
     sort: int = None,
     status: str = None,
+    is_featured: bool = None,
+    is_hot: bool = None,
 ):
     """更新外部课程"""
     course = await ExternalCourse.filter(id=course_id).first()
@@ -167,10 +178,18 @@ async def update_course(
         course.description = description
     if category is not None:
         course.category = category
+    if price is not None:
+        course.price = price
+    if stock is not None:
+        course.stock = stock
     if sort is not None:
         course.sort = sort
     if status is not None:
         course.status = status
+    if is_featured is not None:
+        course.is_featured = is_featured
+    if is_hot is not None:
+        course.is_hot = is_hot
 
     course.updated_at = int(time.time() * 1000)
     await course.save()
@@ -187,3 +206,57 @@ async def delete_course(course_id: int):
 
     await course.delete()
     return {"ok": True}
+
+
+# ========== 精选和热门课程 ==========
+
+@router.get("/featured/list")
+async def get_featured_courses():
+    """获取精选外部课程列表"""
+    courses = await ExternalCourse.filter(status="on", is_featured=True).order_by("-updated_at")
+    return {
+        "ok": True,
+        "list": [_c(c) for c in courses],
+        "total": len(courses)
+    }
+
+
+@router.get("/hot/list")
+async def get_hot_courses():
+    """获取热门外部课程列表"""
+    courses = await ExternalCourse.filter(status="on", is_hot=True).order_by("-updated_at")
+    return {
+        "ok": True,
+        "list": [_c(c) for c in courses],
+        "total": len(courses)
+    }
+
+
+@router.post("/set-featured")
+async def set_featured_courses(body: dict = Body(...)):
+    """设置精选外部课程（替换模式）"""
+    # 支持 { course_ids: [...] } 格式
+    course_ids = body.get("course_ids", body) if isinstance(body, dict) else body
+    if not isinstance(course_ids, list):
+        course_ids = []
+    # 先取消所有精选
+    await ExternalCourse.all().update(is_featured=False)
+    # 再设置新的精选
+    if course_ids:
+        await ExternalCourse.filter(id__in=course_ids).update(is_featured=True)
+    return {"ok": True, "message": "精选课程已更新"}
+
+
+@router.post("/set-hot")
+async def set_hot_courses(body: dict = Body(...)):
+    """设置热门外部课程（替换模式）"""
+    # 支持 { course_ids: [...] } 格式
+    course_ids = body.get("course_ids", body) if isinstance(body, dict) else body
+    if not isinstance(course_ids, list):
+        course_ids = []
+    # 先取消所有热门
+    await ExternalCourse.all().update(is_hot=False)
+    # 再设置新的热门
+    if course_ids:
+        await ExternalCourse.filter(id__in=course_ids).update(is_hot=True)
+    return {"ok": True, "message": "热门课程已更新"}

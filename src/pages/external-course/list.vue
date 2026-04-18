@@ -24,11 +24,18 @@
         <view
           class="category-tab"
           :class="{ 'category-tab--active': selectedCategory === cat.name }"
-          v-for="cat in categories"
+          v-for="cat in displayCategories"
           :key="cat.id"
           @tap="selectCategory(cat.name)"
         >
           <text>{{ cat.icon }} {{ cat.name }}</text>
+        </view>
+        <view
+          class="category-tab"
+          :class="{ 'category-tab--active': selectedCategory === '其他' }"
+          @tap="selectCategory('其他')"
+        >
+          <text>📂 其他</text>
         </view>
       </view>
 
@@ -40,9 +47,18 @@
             <view class="course-card__title">{{ course.title }}</view>
             <view class="course-card__meta">
               <text class="meta-tag" v-if="course.category">{{ course.category }}</text>
-              <text class="meta-tag meta-tag--link" v-if="course.link">外部课程</text>
+              <text class="meta-tag meta-tag--link" v-if="course.is_external">外部课程</text>
+              <text class="meta-tag meta-tag--internal" v-else>内部课程</text>
             </view>
-            <view class="course-card__desc" v-if="course.description">{{ course.description }}</view>
+            <view class="course-card__footer">
+              <view class="course-card__price" v-if="course.price > 0">
+                <text class="price-symbol">¥</text>
+                <text class="price-value">{{ course.price }}</text>
+              </view>
+              <view class="course-card__price course-card__price--free" v-else>
+                <text>免费</text>
+              </view>
+            </view>
           </view>
           <view class="course-card__arrow">›</view>
         </view>
@@ -103,19 +119,37 @@
 import { ref, computed, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { getExternalCourses } from '@/utils/external-course.js'
+import { getCourses, checkInternalCoursePurchased } from '@/utils/course.js'
 import { getCart } from '@/utils/cart.js'
+import { getCurrentUser } from '@/utils/user.js'
 
 const statusBarHeight = ref(0)
 const navHeight = ref(88)
 const cartCount = ref(0)
 const cartBump = ref(false)
 
+// 已购买的内部课程列表
+const purchasedInternalCourses = ref([])
+
 const contentStyle = computed(() => ({
   paddingTop: (statusBarHeight.value + navHeight.value) + 'px',
   height: 'calc(100vh - ' + (statusBarHeight.value + navHeight.value) + 'px)',
 }))
 
-const courseList = ref([])
+// 外部课程列表
+const externalCourseList = ref([])
+// 所有课程列表（外部课程 + 已购买的内部课程）
+const courseList = computed(() => {
+  // 将内部课程标记为非外部课程
+  const internalCourses = purchasedInternalCourses.value.map(c => ({ ...c, is_external: false }))
+  // 将外部课程标记
+  const externalCourses = externalCourseList.value.map(c => ({ ...c, is_external: true }))
+  // 合并并按更新时间排序
+  return [...internalCourses, ...externalCourses].sort((a, b) => {
+    return (b.updated_at || b.created_at || 0) - (a.updated_at || a.created_at || 0)
+  })
+})
+
 const selectedCategory = ref('')
 
 // 分类默认封面图
@@ -213,8 +247,20 @@ const categories = ref([
   { id: 44, name: '职业技能', icon: '💼', color: '#6495ED' },
 ])
 
+// 6个主要分类
+const mainCategoryNames = ['公民素养', '时代前沿', '时事思政', '隔代教育', '哲学', '文学']
+
+// 显示的分类（只显示前6个）
+const displayCategories = computed(() => {
+  return categories.value.filter(cat => mainCategoryNames.includes(cat.name))
+})
+
 const filteredCourses = computed(() => {
   if (!selectedCategory.value) return courseList.value
+  // "其他"分类：显示不在6个主要分类中的课程
+  if (selectedCategory.value === '其他') {
+    return courseList.value.filter(c => !mainCategoryNames.includes(c.category))
+  }
   return courseList.value.filter(c => c.category === selectedCategory.value)
 })
 
@@ -231,9 +277,11 @@ const goBack = () => {
 }
 
 const goDetail = (course) => {
-  if (course.link) {
+  if (course.is_external) {
+    // 外部课程
     uni.navigateTo({ url: `/pages/external-course/detail?id=${course.id}` })
   } else {
+    // 内部课程
     uni.navigateTo({ url: `/pages/product/detail?id=${course.id}` })
   }
 }
@@ -268,15 +316,54 @@ const loadCartCount = async () => {
   }
 }
 
-const loadCourses = async () => {
+// 加载外部课程
+const loadExternalCourses = async () => {
   try {
     const res = await getExternalCourses()
     if (res?.list) {
-      courseList.value = res.list
+      externalCourseList.value = res.list
     }
   } catch (error) {
-    console.error('加载课程失败:', error)
+    console.error('加载外部课程失败:', error)
   }
+}
+
+// 加载已购买的内部课程
+const loadPurchasedInternalCourses = async () => {
+  const user = getCurrentUser()
+  if (!user?.id) return
+
+  try {
+    const res = await getCourses()
+    const allCourses = res?.list || []
+
+    // 检查每个课程是否已购买
+    const purchased = []
+    for (const course of allCourses) {
+      try {
+        const result = await checkInternalCoursePurchased(course._id || course.id)
+        if (result.ok && result.purchased) {
+          purchased.push({
+            ...course,
+            id: course._id || course.id
+          })
+        }
+      } catch (e) {
+        console.error('检查购买状态失败:', e)
+      }
+    }
+
+    purchasedInternalCourses.value = purchased
+  } catch (error) {
+    console.error('加载已购买课程失败:', error)
+  }
+}
+
+const loadCourses = async () => {
+  await Promise.all([
+    loadExternalCourses(),
+    loadPurchasedInternalCourses()
+  ])
 }
 
 onMounted(() => {
@@ -470,6 +557,11 @@ $border-color: #F0E6DC;
     background: rgba(78, 205, 196, 0.1);
     color: $secondary;
   }
+
+  &--internal {
+    background: rgba(255, 107, 53, 0.1);
+    color: $primary;
+  }
 }
 
 .course-card__desc {
@@ -481,6 +573,34 @@ $border-color: #F0E6DC;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   line-clamp: 2;
+}
+
+.course-card__footer {
+  margin-top: 8rpx;
+}
+
+.course-card__price {
+  display: flex;
+  align-items: baseline;
+
+  .price-symbol {
+    font-size: 24rpx;
+    color: $primary;
+    font-weight: 600;
+    margin-right: 2rpx;
+  }
+
+  .price-value {
+    font-size: 32rpx;
+    color: $primary;
+    font-weight: 700;
+  }
+
+  &--free {
+    .price-symbol, .price-value {
+      color: #2ECC71;
+    }
+  }
 }
 
 .course-card__arrow {

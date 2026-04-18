@@ -160,3 +160,113 @@ export async function increaseStock(items) {
     return { ok: false, message: error.message }
   }
 }
+
+/**
+ * 购买课程
+ */
+export async function purchaseCourse(courseId, userId) {
+  try {
+    const res = await request('POST', '/api/course-orders', {
+      course_id: courseId,
+      user_id: userId
+    })
+    if (res?.ok) {
+      return { ok: true, data: res.data }
+    }
+    return { ok: false, message: res?.detail || '购买失败' }
+  } catch (error) {
+    console.error('购买课程失败:', error)
+    return { ok: false, message: error.message }
+  }
+}
+
+/**
+ * 检查课程购买状态
+ */
+export async function checkCoursePurchased(userId, courseId) {
+  try {
+    const res = await request('GET', `/api/course-orders/check/${courseId}`)
+    if (res?.ok) {
+      return {
+        ok: true,
+        purchased: res.purchased,
+        course_link: res.course_link,
+        course_type: res.course_type
+      }
+    }
+    return { ok: false, purchased: false }
+  } catch (error) {
+    console.error('检查购买状态失败:', error)
+    return { ok: false, purchased: false }
+  }
+}
+
+/**
+ * 购买内部课程（带视频）
+ */
+export async function purchaseInternalCourse(courseId) {
+  try {
+    const res = await request('POST', '/api/course-orders/internal', {
+      course_id: courseId
+    })
+    if (res?.ok) {
+      return { ok: true, data: res.data }
+    }
+    return { ok: false, message: res?.detail || '购买失败' }
+  } catch (error) {
+    console.error('购买内部课程失败:', error)
+    return { ok: false, message: error.message }
+  }
+}
+
+/**
+ * 检查内部课程购买状态
+ */
+export async function checkInternalCoursePurchased(courseId) {
+  try {
+    const res = await request('GET', `/api/course-orders/check-internal/${courseId}`)
+    if (res?.ok) {
+      return {
+        ok: true,
+        purchased: res.purchased,
+        video_url: res.video_url
+      }
+    }
+    return { ok: false, purchased: false }
+  } catch (error) {
+    console.error('检查内部课程购买状态失败:', error)
+    return { ok: false, purchased: false }
+  }
+}
+
+/**
+ * 获取用户已购买的课程列表
+ */
+export async function getPurchasedCourses(userId) {
+  try {
+    const res = await request('GET', '/api/course-orders/purchased')
+    if (res?.ok) {
+      return { ok: true, list: res.list || [] }
+    }
+    return { ok: false, list: [] }
+  } catch (error) {
+    console.error('获取已购课程失败:', error)
+    return { ok: false, list: [] }
+  }
+}
+
+/**
+ * 获取用户的课程订单
+ */
+export async function getCourseOrders(userId) {
+  try {
+    const res = await request('GET', '/api/course-orders/user')
+    if (res?.ok) {
+      return { ok: true, list: res.list || [] }
+    }
+    return { ok: false, list: [] }
+  } catch (error) {
+    console.error('获取课程订单失败:', error)
+    return { ok: false, list: [] }
+  }
+}

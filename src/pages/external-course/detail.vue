@@ -28,6 +28,16 @@
     <view class="course-content">
       <view class="course-header">
         <text class="course-title">{{ course.title }}</text>
+        <view class="price-row" v-if="course.price > 0">
+          <text class="price-symbol">¥</text>
+          <text class="price-value">{{ course.price }}</text>
+        </view>
+        <view class="price-row price-row--free" v-else>
+          <text class="price-text">免费</text>
+        </view>
+        <view class="stock-row" v-if="course.stock !== undefined">
+          <text class="stock-text">库存: {{ course.stock }}</text>
+        </view>
       </view>
 
       <!-- 课程介绍 -->
@@ -41,11 +51,17 @@
         </view>
       </view>
 
-      <!-- 跳转按钮 -->
+      <!-- 按钮区域 -->
       <view class="action-area">
-        <view class="action-btn" @tap="goToLearn">
+        <!-- 已购买或免费课程 -->
+        <view class="action-btn action-btn--learn" v-if="isPurchased || course.price == 0" @tap="goToLearn">
           <text class="action-icon">🚀</text>
           <text class="action-text">开始学习</text>
+        </view>
+        <!-- 未购买 -->
+        <view class="action-btn" v-else @tap="handleBuy">
+          <text class="action-icon">💳</text>
+          <text class="action-text">立即购买</text>
         </view>
       </view>
     </view>
@@ -69,11 +85,15 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { getExternalCourseDetail } from '@/utils/external-course.js'
+import { getCurrentUserId } from '@/utils/user.js'
+import { checkCoursePurchased, purchaseCourse } from '@/utils/course.js'
 
 const statusBarHeight = ref(0)
 const navHeight = ref(88)
 const loading = ref(true)
 const course = ref({})
+const isPurchased = ref(false)
+const courseLink = ref('')
 
 // 分类默认封面图（本地图片）
 const categoryCovers = {
@@ -148,12 +168,75 @@ const loadCourse = async () => {
     const res = await getExternalCourseDetail(parseInt(id))
     if (res.ok && res.data) {
       course.value = res.data
+      // 检查是否已购买
+      await checkPurchaseStatus()
     }
   } catch (error) {
     console.error('加载课程失败:', error)
   } finally {
     loading.value = false
   }
+}
+
+// 检查购买状态
+const checkPurchaseStatus = async () => {
+  const userId = getCurrentUserId()
+  if (!userId) return
+
+  try {
+    const res = await checkCoursePurchased(userId, course.value.id)
+    if (res.ok) {
+      isPurchased.value = res.purchased
+      courseLink.value = res.course_link || ''
+    }
+  } catch (error) {
+    console.error('检查购买状态失败:', error)
+  }
+}
+
+// 处理购买
+const handleBuy = async () => {
+  const userId = getCurrentUserId()
+  if (!userId) {
+    uni.showToast({ title: '请先登录', icon: 'none' })
+    setTimeout(() => {
+      uni.navigateTo({ url: '/pages/auth/login' })
+    }, 1000)
+    return
+  }
+
+  if (course.value.stock < 1) {
+    uni.showToast({ title: '库存不足', icon: 'none' })
+    return
+  }
+
+  uni.showModal({
+    title: '确认购买',
+    content: `是否购买《${course.value.title}》？\n价格：¥${course.value.price}`,
+    confirmText: '立即购买',
+    success: async (res) => {
+      if (res.confirm) {
+        uni.showLoading({ title: '购买中...' })
+        try {
+          const result = await purchaseCourse(course.value.id, userId)
+          uni.hideLoading()
+          if (result.ok) {
+            uni.showToast({ title: '购买成功', icon: 'success' })
+            isPurchased.value = true
+            courseLink.value = course.value.link
+            // 更新库存显示
+            course.value.stock = Math.max(0, (course.value.stock || 1) - 1)
+          } else {
+            uni.showToast({ title: result.message || '购买失败', icon: 'none' })
+          }
+        } catch (error) {
+          uni.hideLoading()
+          uni.showToast({ title: '购买失败', icon: 'none' })
+          console.error('购买失败:', error)
+        }
+      }
+    }
+  })
 }
 
 // 返回上一页
@@ -168,16 +251,17 @@ const goHome = () => {
 
 // 跳转到学习页面
 const goToLearn = () => {
-  if (!course.value.link) {
+  const link = courseLink.value || course.value.link
+  if (!link) {
     uni.showToast({ title: '暂无学习链接', icon: 'none' })
     return
   }
 
   // #ifdef H5
-  window.open(course.value.link, '_blank')
+  window.open(link, '_blank')
   // #endif
   // #ifndef H5
-  plus.runtime.openURL(course.value.link)
+  plus.runtime.openURL(link)
   // #endif
 }
 
@@ -189,28 +273,31 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
-$primary: #FF6B35;
-$primary-light: #FF9F5A;
-$text: #2B2B2B;
-$text-body: #5A5A5A;
-$sub: #999999;
-$bg: #FFFAF5;
-$border-color: #F0E6DC;
-$glass-bg: rgba(255, 255, 255, 0.75);
+// ========== 设计规范 - 专业课程平台风格 ==========
+$primary: #2563EB;
+$primary-light: #3B82F6;
+$primary-dark: #1D4ED8;
+$secondary: #10B981;
+$accent: #F59E0B;
+$text-primary: #1E293B;
+$text-secondary: #64748B;
+$text-muted: #94A3B8;
+$bg-light: #F8FAFC;
+$bg-card: #FFFFFF;
 
 .page {
   min-height: 100vh;
-  background: $bg;
+  background: $bg-light;
 }
 
 .glass-nav {
   position: fixed;
   top: 0; left: 0; right: 0;
   height: auto; min-height: 88rpx;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(30rpx);
-  -webkit-backdrop-filter: blur(30rpx);
-  border-bottom: 1rpx solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20rpx);
+  -webkit-backdrop-filter: blur(20rpx);
+  border-bottom: 1rpx solid #E2E8F0;
   z-index: 100;
   display: flex;
   align-items: center;
@@ -221,23 +308,23 @@ $glass-bg: rgba(255, 255, 255, 0.75);
 
 .glass-nav__back {
   width: 64rpx; height: 64rpx;
-  background: rgba(255, 255, 255, 0.9);
+  background: $bg-card;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
-  border: 1rpx solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.08);
+  border: 1rpx solid #E2E8F0;
 
   &:active {
-    background: rgba(255, 144, 0, 0.1);
+    background: rgba(37, 99, 235, 0.1);
     transform: scale(0.9);
   }
 
   .back-arrow {
     font-size: 48rpx;
     font-weight: 300;
-    color: $text;
+    color: $text-primary;
     line-height: 1;
   }
 }
@@ -256,28 +343,24 @@ $glass-bg: rgba(255, 255, 255, 0.75);
 }
 
 .brand-name {
-  font-size: 34rpx;
+  font-size: 32rpx;
   font-weight: 700;
-  color: $text;
-  letter-spacing: 2rpx;
-}
-
-.glass-nav__placeholder {
-  width: 64rpx;
+  color: $text-primary;
+  letter-spacing: 1rpx;
 }
 
 .glass-nav__home {
   width: 64rpx; height: 64rpx;
-  background: rgba(255, 255, 255, 0.9);
+  background: $bg-card;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
-  border: 1rpx solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.08);
+  border: 1rpx solid #E2E8F0;
 
   &:active {
-    background: rgba(255, 144, 0, 0.1);
+    background: rgba(37, 99, 235, 0.1);
     transform: scale(0.9);
   }
 
@@ -325,7 +408,7 @@ $glass-bg: rgba(255, 255, 255, 0.75);
 }
 
 .course-header {
-  background: #fff;
+  background: $bg-card;
   border-radius: 24rpx;
   padding: 32rpx;
   margin-bottom: 24rpx;
@@ -335,12 +418,50 @@ $glass-bg: rgba(255, 255, 255, 0.75);
 .course-title {
   font-size: 40rpx;
   font-weight: 700;
-  color: $text;
+  color: $text-primary;
   line-height: 1.4;
+  display: block;
+  margin-bottom: 20rpx;
+}
+
+.price-row {
+  display: flex;
+  align-items: baseline;
+  margin-bottom: 12rpx;
+}
+
+.price-symbol {
+  font-size: 32rpx;
+  color: $primary;
+  font-weight: 600;
+  margin-right: 4rpx;
+}
+
+.price-value {
+  font-size: 48rpx;
+  color: $primary;
+  font-weight: 700;
+}
+
+.price-row--free {
+  .price-text {
+    font-size: 36rpx;
+    color: $secondary;
+    font-weight: 700;
+  }
+}
+
+.stock-row {
+  margin-top: 8rpx;
+}
+
+.stock-text {
+  font-size: 24rpx;
+  color: $text-muted;
 }
 
 .section {
-  background: #fff;
+  background: $bg-card;
   border-radius: 24rpx;
   padding: 32rpx;
   margin-bottom: 24rpx;
@@ -354,7 +475,7 @@ $glass-bg: rgba(255, 255, 255, 0.75);
   margin-bottom: 20rpx;
   font-size: 32rpx;
   font-weight: 700;
-  color: $text;
+  color: $text-primary;
 }
 
 .section-icon {
@@ -367,7 +488,7 @@ $glass-bg: rgba(255, 255, 255, 0.75);
 
 .description-text {
   font-size: 28rpx;
-  color: $text-body;
+  color: $text-secondary;
   line-height: 1.8;
 }
 
@@ -381,12 +502,17 @@ $glass-bg: rgba(255, 255, 255, 0.75);
   justify-content: center;
   gap: 16rpx;
   height: 100rpx;
-  background: linear-gradient(135deg, $primary 0%, $primary-light 100%);
+  background: $primary;
   border-radius: 50rpx;
-  box-shadow: 0 8rpx 32rpx rgba(255, 107, 53, 0.4);
+  box-shadow: 0 8rpx 32rpx rgba(37, 99, 235, 0.35);
 
   &:active {
     transform: scale(0.98);
+  }
+
+  &--learn {
+    background: $secondary;
+    box-shadow: 0 8rpx 32rpx rgba(16, 185, 129, 0.35);
   }
 }
 
@@ -407,7 +533,7 @@ $glass-bg: rgba(255, 255, 255, 0.75);
   justify-content: center;
   padding: 200rpx 0;
   font-size: 28rpx;
-  color: $sub;
+  color: $text-muted;
 }
 
 .error-state {
@@ -426,14 +552,15 @@ $glass-bg: rgba(255, 255, 255, 0.75);
 
 .error-text {
   font-size: 28rpx;
-  color: $sub;
+  color: $text-muted;
   margin-bottom: 32rpx;
 }
 
 .error-btn {
   padding: 20rpx 48rpx;
-  background: linear-gradient(135deg, $primary 0%, $primary-light 100%);
+  background: $primary;
   border-radius: 30rpx;
+  box-shadow: 0 8rpx 24rpx rgba(37, 99, 235, 0.3);
 
   text {
     font-size: 28rpx;

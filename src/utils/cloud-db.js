@@ -33,36 +33,45 @@ function getStoredUser() {
 // 通用请求函数
 export async function request(method, path, data = null) {
   const user = getStoredUser()
-  const headers = {
+  const header = {
     'Content-Type': 'application/json',
   }
   
   // 如果有登录用户，传递用户ID
   if (user && user.id) {
-    headers['X-User-Id'] = String(user.id)
+    header['X-User-Id'] = String(user.id)
+    console.log('[Request] User logged in, X-User-Id:', user.id)
   }
   
   let url = BASE_URL + path
   const options = {
     method,
-    headers,
-    url,  // 必须包含 url
+    header,  // uni.request 使用 header 而非 headers
+    url,
   }
   
   if (data && (method === 'POST' || method === 'PUT')) {
-    options.body = JSON.stringify(data)
+    options.data = data  // uni.request 使用 data 而非 body
+    console.log('[Request] POST data:', JSON.stringify(data))
   } else if (data && method === 'GET') {
     const query = new URLSearchParams(data).toString()
     if (query) url += '?' + query
   }
   
+  console.log('[Request] URL:', url)
+  console.log('[Request] Options:', JSON.stringify(options, null, 2))
+
   try {
     const res = await uni.request(options)
+    console.log('[Response] Status:', res.statusCode)
+    console.log('[Response] Data:', JSON.stringify(res.data, null, 2))
     if (res.statusCode >= 200 && res.statusCode < 300) {
       return res.data
     } else {
-      console.error(`请求失败 [${res.statusCode}]:`, res.data)
-      throw new Error(res.data?.detail || `请求失败 (${res.statusCode})`)
+      console.error(`请求失败 [${res.statusCode}]:`, JSON.stringify(res.data, null, 2))
+      const detail = res.data?.detail
+      const msg = Array.isArray(detail) ? detail.map(d => d.msg || d).join(', ') : (detail || `请求失败 (${res.statusCode})`)
+      throw new Error(msg)
     }
   } catch (error) {
     console.error('请求错误:', error)
@@ -155,7 +164,14 @@ export async function dbWhere(collection, condition, options = {}) {
       params.x_user_id = String(condition.userId)
     }
     
-    const res = await request('GET', `/api/${collection}s`, params)
+    // 特殊路由映射（复数变单数）
+    const routeMap = {
+      'carts': 'cart',
+      'favorites': 'favorites',
+    }
+    const route = routeMap[collection] || `${collection}s`
+    
+    const res = await request('GET', `/api/${route}`, params)
     
     // 统一返回格式
     let data = res.list || res.data || []

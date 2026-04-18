@@ -2,7 +2,8 @@
 课程路由
 """
 import time
-from fastapi import APIRouter, HTTPException, Query
+from typing import Optional, List
+from fastapi import APIRouter, HTTPException, Query, Body
 
 from app.models.course import Course, Category
 from app.models.cart import Cart
@@ -36,6 +37,8 @@ def _c(course):
         "videoUrl": course.video_url,
         "status": course.status,
         "sales": course.sales,
+        "is_featured": course.is_featured,
+        "is_hot": course.is_hot,
     }
 
 
@@ -195,3 +198,57 @@ async def get_course_stock(course_id: int):
         return {"ok": False, "message": "课程不存在"}
 
     return {"ok": True, "stock": course.stock}
+
+
+# ========== 精选和热门课程 ==========
+
+@router.get("/featured/list")
+async def get_featured_courses():
+    """获取精选课程列表"""
+    courses = await Course.filter(status="on", is_featured=True).order_by("-updated_at")
+    return {
+        "ok": True,
+        "list": [_c(c) for c in courses],
+        "total": len(courses)
+    }
+
+
+@router.get("/hot/list")
+async def get_hot_courses():
+    """获取热门课程列表"""
+    courses = await Course.filter(status="on", is_hot=True).order_by("-updated_at")
+    return {
+        "ok": True,
+        "list": [_c(c) for c in courses],
+        "total": len(courses)
+    }
+
+
+@router.post("/set-featured")
+async def set_featured_courses(body: dict = Body(...)):
+    """设置精选课程（替换模式）"""
+    # 支持 { course_ids: [...] } 格式
+    course_ids = body.get("course_ids", body) if isinstance(body, dict) else body
+    if not isinstance(course_ids, list):
+        course_ids = []
+    # 先取消所有精选
+    await Course.all().update(is_featured=False)
+    # 再设置新的精选
+    if course_ids:
+        await Course.filter(id__in=course_ids).update(is_featured=True)
+    return {"ok": True, "message": "精选课程已更新"}
+
+
+@router.post("/set-hot")
+async def set_hot_courses(body: dict = Body(...)):
+    """设置热门课程（替换模式）"""
+    # 支持 { course_ids: [...] } 格式
+    course_ids = body.get("course_ids", body) if isinstance(body, dict) else body
+    if not isinstance(course_ids, list):
+        course_ids = []
+    # 先取消所有热门
+    await Course.all().update(is_hot=False)
+    # 再设置新的热门
+    if course_ids:
+        await Course.filter(id__in=course_ids).update(is_hot=True)
+    return {"ok": True, "message": "热门课程已更新"}

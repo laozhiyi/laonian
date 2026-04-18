@@ -13,6 +13,14 @@ router = APIRouter(prefix="/api/users", tags=["用户"])
 # 用户注册
 @router.post("/register")
 async def register(data: UserRegister):
+    # 禁止注册 admin 账户
+    if data.username.lower() == "admin":
+        raise HTTPException(status_code=403, detail="禁止注册管理员账户")
+
+    # 不允许注册管理员角色
+    if data.role == "admin":
+        raise HTTPException(status_code=403, detail="禁止注册管理员账户")
+
     # 检查用户名是否已存在
     existing = await User.filter(username=data.username.lower()).first()
     if existing:
@@ -45,6 +53,7 @@ async def login(data: UserLogin):
     password = data.password
     
     # 管理员特殊处理 - 简化逻辑
+    # 只有 admin/admin 才能登录，禁止其他账户冒充
     if username == "admin" and password == "admin":
         # 使用 get_or_create 原子操作
         admin, created = await User.get_or_create(
@@ -52,17 +61,23 @@ async def login(data: UserLogin):
             defaults={
                 "password": "admin",
                 "role": "admin",
+                "balance": 0,
                 "created_at": int(time.time() * 1000),
                 "updated_at": int(time.time() * 1000)
             }
         )
+        
+        # 防止普通用户通过注册 admin 后登录
+        if admin.role != "admin":
+            raise HTTPException(status_code=401, detail="用户名或密码错误")
         
         return {
             "ok": True,
             "user": {
                 "id": admin.id,
                 "username": admin.username,
-                "role": admin.role
+                "role": admin.role,
+                "balance": float(admin.balance or 0)
             }
         }
 
@@ -77,7 +92,8 @@ async def login(data: UserLogin):
         "user": {
             "id": user.id,
             "username": user.username,
-            "role": user.role
+            "role": user.role,
+            "balance": float(user.balance or 0)
         }
     }
 

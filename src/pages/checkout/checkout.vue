@@ -5,77 +5,35 @@
       <view class="glass-nav__back" @tap="goBack">
         <text class="back-arrow">‹</text>
       </view>
-      <view class="glass-nav__title">
-        <text class="title-text">确认订单</text>
+      <view class="glass-nav__brand">
+        <text class="brand-emoji">🎓</text>
+        <text class="brand-name">确认订单</text>
       </view>
       <view class="glass-nav__placeholder" />
     </view>
 
     <!-- 滚动内容 -->
     <scroll-view class="scroll" :style="scrollStyle" scroll-y>
-      <!-- 收货地址 -->
-      <view class="section address-section">
-        <view class="section-title">收货地址</view>
-        <view
-          class="address-card"
-          :class="{ 'address-card--empty': !selectedAddress }"
-          @tap="chooseAddress"
-        >
-          <template v-if="selectedAddress">
-            <view class="address-card__top">
-              <view class="address-card__name">{{ selectedAddress.name }}</view>
-              <view class="address-card__phone">{{ selectedAddress.phone }}</view>
-              <view class="address-card__tag" v-if="selectedAddress.isDefault">默认</view>
-            </view>
-            <view class="address-card__detail">
-              {{ selectedAddress.detail }}
-            </view>
-            <view class="address-card__arrow">
-              <!-- #ifdef H5 -->
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              <!-- #endif -->
-              <!-- #ifdef MP-WEIXIN -->
-              <image src="/static/icons/right.png" mode="aspectFit" />
-              <!-- #endif -->
-            </view>
-          </template>
-          <template v-else>
-            <view class="address-card__empty">
-              <view class="address-card__empty-icon">
-                <!-- #ifdef H5 -->
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" stroke-width="2"/>
-                  <path d="M12 8C14.2091 8 16 9.79086 16 12C16 14.2091 14.2091 16 12 16C9.79086 16 8 14.2091 8 12C8 9.79086 9.79086 8 12 8Z" stroke="currentColor" stroke-width="2"/>
-                </svg>
-                <!-- #endif -->
-                <!-- #ifdef MP-WEIXIN -->
-                <image src="/static/icons/location.png" mode="aspectFit" />
-                <!-- #endif -->
-              </view>
-              <text class="address-card__empty-text">请添加收货地址</text>
-              <view class="address-card__empty-arrow">
-                <!-- #ifdef H5 -->
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-                <!-- #endif -->
-                <!-- #ifdef MP-WEIXIN -->
-                <image src="/static/icons/right.png" mode="aspectFit" />
-                <!-- #endif -->
-              </view>
-            </view>
-          </template>
+      <!-- 余额信息 -->
+      <view class="section balance-section">
+        <view class="balance-info">
+          <text class="balance-icon">💰</text>
+          <view class="balance-detail">
+            <text class="balance-label">我的余额</text>
+            <text class="balance-value">¥{{ userBalance.toFixed(2) }}</text>
+          </view>
+        </view>
+        <view class="balance-tip" v-if="userBalance < totalPrice">
+          <text class="balance-tip__text">⚠️ 余额不足，请先充值</text>
         </view>
       </view>
 
       <!-- 订单商品 -->
       <view class="section goods-section">
-        <view class="section-title">订单商品</view>
+        <view class="section-title">订单课程</view>
         <view class="goods-list">
           <view class="goods-item" v-for="item in cartList" :key="item.id">
-            <image class="goods-item__cover" :src="item.cover" mode="aspectFill" />
+            <image class="goods-item__cover" :src="item.cover || '/static/covers/7-edu.jpg'" mode="aspectFill" />
             <view class="goods-item__info">
               <view class="goods-item__title">{{ item.title }}</view>
               <view class="goods-item__row">
@@ -87,32 +45,25 @@
         </view>
       </view>
 
-      <!-- 订单备注 -->
-      <view class="section remark-section">
-        <view class="section-title">订单备注</view>
-        <textarea
-          class="remark-input"
-          v-model="remark"
-          placeholder="选填，请输入备注信息"
-          placeholder-class="remark-placeholder"
-          :maxlength="200"
-        />
-      </view>
-
       <!-- 订单信息 -->
       <view class="section info-section">
-        <view class="section-title">订单信息</view>
-        <view class="info-row">
-          <text class="info-row__label">商品金额</text>
-          <text class="info-row__value">¥{{ (totalPrice || 0).toFixed(2) }}</text>
-        </view>
-        <view class="info-row">
-          <text class="info-row__label">运费</text>
-          <text class="info-row__value info-row__value--free">免运费</text>
+        <view class="section-title">费用明细</view>
+        <view class="info-row" v-for="item in cartList" :key="item.id">
+          <text class="info-row__label">{{ item.title }}</text>
+          <text class="info-row__value">¥{{ ((item.price || 0) * item.quantity).toFixed(2) }}</text>
         </view>
         <view class="info-row info-row--total">
           <text class="info-row__label">合计</text>
-          <text class="info-row__value info-row__value--primary">¥{{ (totalPrice || 0).toFixed(2) }}</text>
+          <text class="info-row__value info-row__value--primary">¥{{ totalPrice.toFixed(2) }}</text>
+        </view>
+      </view>
+
+      <!-- 空购物车 -->
+      <view class="empty-state" v-if="cartList.length === 0 && !loading">
+        <text class="empty-icon">🛒</text>
+        <text class="empty-text">购物车为空</text>
+        <view class="empty-btn" @tap="goMall">
+          <text>去选课</text>
         </view>
       </view>
 
@@ -121,13 +72,17 @@
     </scroll-view>
 
     <!-- 底部提交栏 -->
-    <view class="submit-bar" :style="submitBarStyle">
+    <view class="submit-bar" :style="submitBarStyle" v-if="cartList.length > 0">
       <view class="submit-bar__total">
         <text class="submit-bar__label">合计：</text>
-        <text class="submit-bar__price">¥{{ (totalPrice || 0).toFixed(2) }}</text>
+        <text class="submit-bar__price">¥{{ totalPrice.toFixed(2) }}</text>
       </view>
-      <view class="submit-bar__btn" @tap="submitOrder">
-        <text>提交订单</text>
+      <view
+        class="submit-bar__btn"
+        :class="{ 'submit-bar__btn--disabled': userBalance < totalPrice }"
+        @tap="submitOrder"
+      >
+        <text>{{ userBalance < totalPrice ? '余额不足' : '确认购买' }}</text>
       </view>
     </view>
   </view>
@@ -136,116 +91,129 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { getCart, clearCart } from '@/utils/cart.js'
-import { createOrder } from '@/utils/order.js'
-import { getDefaultAddress, getSelectedAddress } from '@/utils/address.js'
+import { purchaseInternalCourse } from '@/utils/course.js'
+import { getCurrentUser } from '@/utils/user.js'
 
-// ========== 状态栏高度 ==========
 const statusBarHeight = ref(0)
 const navHeight = ref(88)
+const loading = ref(true)
 
-// ========== 购物车数据 ==========
 const cartList = ref([])
 const totalPrice = ref(0)
+const userBalance = ref(0)
 
-// ========== 收货地址 ==========
-const selectedAddress = ref(null)
-
-// ========== 订单备注 ==========
-const remark = ref('')
-
-// ========== 滚动区域样式 ==========
 const scrollStyle = computed(() => ({
   paddingTop: (statusBarHeight.value + navHeight.value) + 'px',
-  height: 'calc(100vh - ' + (statusBarHeight.value + navHeight.value + uni.getSystemInfoSync().safeAreaInsets?.bottom || 0) + 'px)',
+  height: 'calc(100vh - ' + (statusBarHeight.value + navHeight.value + 140) + 'px)'
 }))
 
-// ========== 提交栏样式 ==========
-const submitBarStyle = computed(() => {
-  const safeBottom = uni.getSystemInfoSync().safeAreaInsets?.bottom || 0
-  return {
-    paddingBottom: (safeBottom + 20) + 'px'
-  }
-})
+const submitBarStyle = computed(() => ({
+  paddingBottom: 'calc(env(safe-area-inset-bottom) + 20rpx)'
+}))
 
-// ========== 加载数据 ==========
 const loadData = async () => {
-  // 加载购物车（云端版）
-  const cartRes = await getCart()
-  cartList.value = cartRes.list || []
-  totalPrice.value = cartRes.totalPrice || 0
+  loading.value = true
+  try {
+    const cartRes = await getCart()
+    cartList.value = cartRes.list || []
+    totalPrice.value = cartRes.totalPrice || 0
 
-  // 加载默认地址
-  await loadAddress()
-}
-
-const loadAddress = async () => {
-  // 使用新的 getSelectedAddress 和 getDefaultAddress
-  const selected = await getSelectedAddress()
-  if (selected) {
-    selectedAddress.value = selected
-    return
-  }
-
-  const addrRes = await getDefaultAddress()
-  if (addrRes.ok && addrRes.data) {
-    selectedAddress.value = addrRes.data
+    const user = getCurrentUser()
+    if (user) {
+      userBalance.value = user.balance || 0
+    }
+  } catch (e) {
+    console.error('加载数据失败:', e)
+  } finally {
+    loading.value = false
   }
 }
 
-// ========== 交互方法 ==========
 const goBack = () => {
   uni.navigateBack()
 }
 
-const chooseAddress = () => {
-  uni.navigateTo({ url: '/pages/address/address' })
+const goMall = () => {
+  uni.switchTab({ url: '/pages/mall/mall' })
 }
 
 const submitOrder = async () => {
-  // 验证地址
-  if (!selectedAddress.value) {
-    uni.showToast({ title: '请选择收货地址', icon: 'none' })
+  if (userBalance.value < totalPrice.value) {
+    uni.showModal({
+      title: '余额不足',
+      content: '当前余额不足以完成购买，请先充值',
+      confirmText: '去充值',
+      cancelText: '取消',
+      success: (res) => {
+        if (res.confirm) {
+          uni.navigateTo({ url: '/pages/balance/balance' })
+        }
+      }
+    })
     return
   }
 
-  // 验证购物车
   if (cartList.value.length === 0) {
     uni.showToast({ title: '购物车为空', icon: 'none' })
     return
   }
 
   uni.showModal({
-    title: '确认支付',
-    content: `共 ${cartList.value.length} 件商品，合计 ¥${(totalPrice.value || 0).toFixed(2)}`,
-    confirmText: '立即支付',
+    title: '确认购买',
+    content: `即将购买 ${cartList.value.length} 个课程，合计 ¥${totalPrice.value.toFixed(2)}，将从余额扣款`,
+    confirmText: '确认购买',
     success: async (res) => {
       if (res.confirm) {
-        uni.showLoading({ title: '支付中...' })
+        uni.showLoading({ title: '购买中...' })
 
-        // 创建订单（云端版）
-        const orderRes = await createOrder({
-          cartItems: cartList.value,
-          address: selectedAddress.value,
-          remark: remark.value.trim(),
-        })
+        let successCount = 0
+        let failCount = 0
+        const total = cartList.value.length
 
-        if (orderRes.ok) {
-          // 清空购物车
+        for (const item of cartList.value) {
+          const courseId = item.productId || item.courseId || item.id
+          if (!courseId) {
+            failCount++
+            continue
+          }
+
+          const result = await purchaseInternalCourse(courseId)
+          if (result.ok) {
+            successCount++
+          } else {
+            failCount++
+            console.warn(`课程 ${item.title} 购买失败:`, result.message)
+          }
+        }
+
+        uni.hideLoading()
+
+        if (successCount === total) {
+          // 全部成功
           await clearCart()
-
-          uni.hideLoading()
-          uni.showToast({ title: '支付成功', icon: 'success' })
-
-          // 延迟跳转到订单列表
+          uni.showToast({ title: '购买成功', icon: 'success' })
           setTimeout(() => {
-            uni.navigateTo({ url: '/pages/order/orders' })
+            uni.switchTab({ url: '/pages/me/me' })
+          }, 1500)
+        } else if (successCount > 0) {
+          // 部分成功
+          await clearCart()
+          uni.showModal({
+            title: '部分购买成功',
+            content: `成功 ${successCount} 个，失败 ${failCount} 个。余额已退还。`,
+            showCancel: false,
+            confirmText: '知道了'
+          })
+          setTimeout(() => {
+            uni.switchTab({ url: '/pages/me/me' })
           }, 1500)
         } else {
-          uni.hideLoading()
+          // 全部失败
           uni.showModal({
-            title: '支付失败',
-            content: orderRes.message || '请重试',
-            showCancel: false
+            title: '购买失败',
+            content: '所有课程购买均失败，请检查余额或课程状态',
+            showCancel: false,
+            confirmText: '我知道了'
           })
         }
       }
@@ -253,7 +221,6 @@ const submitOrder = async () => {
   })
 }
 
-// ========== 生命周期 ==========
 onMounted(() => {
   const sys = uni.getSystemInfoSync()
   statusBarHeight.value = sys.statusBarHeight || 0
@@ -262,34 +229,16 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
-$primary: #FF9000;
-$primary-light: #FFB347;
+$primary: #FF6B35;
+$primary-light: #FF9F5A;
 $text: #2B2B2B;
 $text-body: #5A5A5A;
 $sub: #999999;
 $bg: #FFFAF5;
 
-// 动画定义
 @keyframes slideUpFade {
-  from {
-    opacity: 0;
-    transform: translateY(30rpx);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes pulse-ring {
-  0% {
-    transform: scale(0.8);
-    opacity: 0.5;
-  }
-  100% {
-    transform: scale(1.2);
-    opacity: 0;
-  }
+  from { opacity: 0; transform: translateY(30rpx); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .page {
@@ -300,11 +249,8 @@ $bg: #FFFAF5;
 /* 毛玻璃导航 */
 .glass-nav {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: auto;
-  min-height: 88rpx;
+  top: 0; left: 0; right: 0;
+  height: auto; min-height: 88rpx;
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(30rpx);
   -webkit-backdrop-filter: blur(30rpx);
@@ -318,8 +264,7 @@ $bg: #FFFAF5;
 }
 
 .glass-nav__back {
-  width: 64rpx;
-  height: 64rpx;
+  width: 64rpx; height: 64rpx;
   background: rgba(255, 255, 255, 0.9);
   border-radius: 50%;
   display: flex;
@@ -327,13 +272,10 @@ $bg: #FFFAF5;
   justify-content: center;
   box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
   border: 1rpx solid rgba(255, 255, 255, 0.5);
-  transition: all 0.2s ease;
-
   &:active {
     background: rgba(255, 144, 0, 0.1);
     transform: scale(0.9);
   }
-
   .back-arrow {
     font-size: 48rpx;
     font-weight: 300;
@@ -342,27 +284,28 @@ $bg: #FFFAF5;
   }
 }
 
-.glass-nav__title {
+.glass-nav__brand {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
 }
 
-.title-text {
+.brand-emoji { font-size: 36rpx; }
+
+.brand-name {
   font-size: 34rpx;
-  font-weight: 600;
+  font-weight: 700;
   color: $text;
   letter-spacing: 2rpx;
 }
 
-.glass-nav__placeholder {
-  width: 64rpx;
-}
+.glass-nav__placeholder { width: 64rpx; }
 
 /* 滚动区域 */
-.scroll {
-  width: 100%;
-}
+.scroll { width: 100%; }
 
 /* 区块通用 */
 .section {
@@ -370,10 +313,8 @@ $bg: #FFFAF5;
   margin: 24rpx;
   border-radius: 28rpx;
   overflow: hidden;
-  box-shadow: 0 4rpx 28rpx rgba(0, 0, 0, 0.05),
-              0 2rpx 14rpx rgba(0, 0, 0, 0.02),
-              inset 0 1rpx 0 rgba(255, 255, 255, 1);
-  border: 1rpx solid rgba(0, 0, 0, 0.03);
+  box-shadow: 0 4rpx 28rpx rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.03);
   animation: slideUpFade 0.5s ease-out;
 }
 
@@ -384,147 +325,59 @@ $bg: #FFFAF5;
   padding: 28rpx 28rpx 20rpx;
   border-bottom: 1rpx solid #f5f5f5;
   letter-spacing: 1rpx;
-  position: relative;
-
-  &::after {
-    content: '';
-    position: absolute;
-    bottom: 18rpx;
-    left: 28rpx;
-    width: 48rpx;
-    height: 4rpx;
-    background: linear-gradient(90deg, $primary, $primary-light);
-    border-radius: 2rpx;
-  }
 }
 
-/* 收货地址 */
-.address-card {
+/* 余额区块 */
+.balance-section {
   padding: 28rpx;
-  position: relative;
-  transition: all 0.2s ease;
-
-  &:active {
-    background: rgba(255, 144, 0, 0.02);
-  }
 }
 
-.address-card__top {
+.balance-info {
   display: flex;
   align-items: center;
-  margin-bottom: 14rpx;
+  gap: 20rpx;
 }
 
-.address-card__name {
-  font-size: 32rpx;
-  font-weight: 600;
-  color: $text;
-  margin-right: 20rpx;
+.balance-icon { font-size: 60rpx; }
+
+.balance-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
 }
 
-.address-card__phone {
-  font-size: 30rpx;
+.balance-label {
+  font-size: 26rpx;
   color: $sub;
 }
 
-.address-card__tag {
-  font-size: 22rpx;
-  color: #fff;
-  background: linear-gradient(135deg, $primary, $primary-light);
-  padding: 6rpx 16rpx;
-  border-radius: 8rpx;
-  margin-left: 20rpx;
-  font-weight: 500;
-  box-shadow: 0 2rpx 8rpx rgba(255, 144, 0, 0.3);
+.balance-value {
+  font-size: 48rpx;
+  font-weight: 800;
+  color: $primary;
 }
 
-.address-card__detail {
-  font-size: 28rpx;
-  color: $text-body;
-  line-height: 1.6;
+.balance-tip {
+  margin-top: 20rpx;
+  padding: 16rpx 20rpx;
+  background: rgba(255, 59, 48, 0.08);
+  border-radius: 16rpx;
 }
 
-.address-card__arrow {
-  position: absolute;
-  right: 24rpx;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 36rpx;
-  height: 36rpx;
-  color: $sub;
-  opacity: 0.6;
-  transition: all 0.2s;
-
-  svg {
-    width: 100%;
-    height: 100%;
-  }
-}
-
-.address-card--empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 56rpx 24rpx;
-}
-
-.address-card__empty {
-  display: flex;
-  align-items: center;
-  color: $sub;
-
-  &-icon {
-    width: 40rpx;
-    height: 40rpx;
-    margin-right: 16rpx;
-    opacity: 0.6;
-
-    svg {
-      width: 100%;
-      height: 100%;
-    }
-  }
-
-  &-text {
-    font-size: 30rpx;
-    letter-spacing: 1rpx;
-  }
-
-  &-arrow {
-    width: 36rpx;
-    height: 36rpx;
-    margin-left: 16rpx;
-    opacity: 0.6;
-
-    svg {
-      width: 100%;
-      height: 100%;
-    }
-  }
+.balance-tip__text {
+  font-size: 26rpx;
+  color: #ff3b30;
 }
 
 /* 订单商品 */
-.goods-list {
-  padding: 0 24rpx 24rpx;
-}
+.goods-list { padding: 0 24rpx 24rpx; }
 
 .goods-item {
   display: flex;
   align-items: center;
   padding: 20rpx 0;
   border-bottom: 1rpx solid #f8f8f8;
-  transition: all 0.2s ease;
-
-  &:active {
-    background: rgba(255, 144, 0, 0.02);
-    margin: 0 -24rpx;
-    padding-left: 24rpx;
-    padding-right: 24rpx;
-  }
-
-  &:last-child {
-    border-bottom: none;
-  }
+  &:last-child { border-bottom: none; }
 }
 
 .goods-item__cover {
@@ -533,11 +386,6 @@ $bg: #FFFAF5;
   border-radius: 16rpx;
   flex-shrink: 0;
   box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
-  transition: transform 0.2s ease;
-
-  &:active {
-    transform: scale(0.95);
-  }
 }
 
 .goods-item__info {
@@ -567,7 +415,6 @@ $bg: #FFFAF5;
   font-size: 32rpx;
   color: $primary;
   font-weight: 600;
-  text-shadow: 0 2rpx 6rpx rgba(255, 144, 0, 0.15);
 }
 
 .goods-item__quantity {
@@ -575,100 +422,88 @@ $bg: #FFFAF5;
   color: $sub;
 }
 
-/* 订单备注 */
-.remark-section {
-  padding-bottom: 24rpx;
-}
-
-.remark-input {
-  width: 100%;
-  height: 140rpx;
-  padding: 0 24rpx;
-  font-size: 28rpx;
-  color: $text;
-  line-height: 1.6;
-  background: transparent;
-}
-
-.remark-placeholder {
-  color: #bbb;
-  font-size: 26rpx;
-}
-
 /* 订单信息 */
 .info-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24rpx 24rpx;
+  padding: 24rpx 28rpx;
   border-bottom: 1rpx solid #f8f8f8;
-  transition: all 0.2s ease;
-
-  &:last-child {
-    border-bottom: none;
-  }
-
-  &:active {
-    background: rgba(255, 144, 0, 0.02);
-  }
+  &:last-child { border-bottom: none; }
 }
 
 .info-row__label {
   font-size: 28rpx;
   color: $sub;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 16rpx;
 }
 
 .info-row__value {
   font-size: 28rpx;
   color: $text;
   font-weight: 500;
-}
-
-.info-row__value--free {
-  color: $primary;
-  font-weight: 600;
-}
-
-.info-row__value--primary {
-  font-size: 36rpx;
-  font-weight: 700;
-  color: $primary;
-  text-shadow: 0 2rpx 8rpx rgba(255, 144, 0, 0.2);
+  flex-shrink: 0;
 }
 
 .info-row--total {
-  padding: 28rpx;
   background: linear-gradient(180deg, #fafafa, #f5f5f5);
+  padding: 28rpx;
 }
+
+.info-row__value--primary {
+  font-size: 40rpx;
+  font-weight: 800;
+  color: $primary;
+}
+
+/* 空状态 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 0;
+}
+
+.empty-icon {
+  font-size: 120rpx;
+  margin-bottom: 32rpx;
+  opacity: 0.4;
+}
+
+.empty-text {
+  font-size: 28rpx;
+  color: $sub;
+  margin-bottom: 48rpx;
+}
+
+.empty-btn {
+  padding: 20rpx 64rpx;
+  background: linear-gradient(135deg, $primary 0%, $primary-light 100%);
+  border-radius: 48rpx;
+  text { font-size: 30rpx; font-weight: 600; color: #fff; }
+}
+
+/* 底部安全区 */
+.bottom-safe { height: 160rpx; }
 
 /* 底部提交栏 */
 .submit-bar {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  left: 0; right: 0; bottom: 0;
   height: 140rpx;
   background: #fff;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 32rpx;
-  padding-left: 40rpx;
-  padding-bottom: calc(env(safe-area-inset-bottom) + 20rpx);
-  box-shadow: 0 -8rpx 40rpx rgba(0, 0, 0, 0.1),
-              0 -2rpx 16rpx rgba(0, 0, 0, 0.04);
+  padding: 0 32rpx 0 40rpx;
+  box-shadow: 0 -8rpx 40rpx rgba(0, 0, 0, 0.1);
   border-top: 1rpx solid rgba(0, 0, 0, 0.05);
   z-index: 100;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 32rpx;
-    right: 32rpx;
-    height: 1rpx;
-    background: linear-gradient(90deg, transparent, rgba(255, 144, 0, 0.2), transparent);
-  }
 }
 
 .submit-bar__total {
@@ -684,32 +519,25 @@ $bg: #FFFAF5;
 
 .submit-bar__price {
   font-size: 48rpx;
-  font-weight: 700;
+  font-weight: 800;
   color: $primary;
-  text-shadow: 0 2rpx 10rpx rgba(255, 144, 0, 0.2);
-  font-family: 'DIN Alternate', 'Helvetica Neue', sans-serif;
 }
 
 .submit-bar__btn {
-  background: linear-gradient(135deg, $primary 0%, #FF6B35 100%);
-  padding: 30rpx 76rpx;
+  background: linear-gradient(135deg, $primary 0%, $primary-light 100%);
+  padding: 30rpx 56rpx;
   border-radius: 48rpx;
   font-size: 34rpx;
   font-weight: 600;
   color: #fff;
   letter-spacing: 3rpx;
-  box-shadow: 0 8rpx 32rpx rgba(255, 144, 0, 0.4),
-              0 4rpx 16rpx rgba(255, 107, 53, 0.25);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 8rpx 32rpx rgba(255, 107, 53, 0.35);
+  transition: all 0.3s;
+  &:active { transform: scale(0.96); }
 
-  &:active {
-    transform: scale(0.96);
-    box-shadow: 0 4rpx 20rpx rgba(255, 144, 0, 0.3);
+  &--disabled {
+    background: #ccc;
+    box-shadow: none;
   }
-}
-
-/* 底部安全区 */
-.bottom-safe {
-  height: 160rpx;
 }
 </style>

@@ -91,6 +91,8 @@ class CourseUpdate(BaseModel):
     level: Optional[str] = None
     video_url: Optional[str] = None
     status: Optional[str] = None
+    is_featured: Optional[bool] = None
+    is_hot: Optional[bool] = None
 
 
 class CourseResponse(BaseModel):
@@ -112,6 +114,8 @@ class CourseResponse(BaseModel):
     video_url: Optional[str]
     status: str
     sales: int
+    is_featured: bool = False
+    is_hot: bool = False
 
     class Config:
         from_attributes = True

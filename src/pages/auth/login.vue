@@ -80,14 +80,33 @@ const onSubmit = async () => {
     }
     toast('登录成功')
   } else {
+    // 固定注册为普通用户，不允许注册管理员
     const res = await registerUser({ username: name, password: pwd, role: 'user' })
     if (!res.ok) {
-      toast(res.message || '注册失败')
+      const msg = res.message || '注册失败'
+      if (msg.includes('已存在')) {
+        uni.showModal({
+          title: '提示',
+          content: '该用户名已存在，是否切换到登录？',
+          confirmText: '去登录',
+          cancelText: '取消',
+          success: (confirm) => {
+            if (confirm.confirm) {
+              mode.value = 'login'
+              password.value = ''
+            }
+          }
+        })
+      } else {
+        toast(msg)
+      }
       return
     }
-    toast('注册成功')
+    // 注册成功后自动登录
+    toast('注册成功，正在登录...')
   }
 
+  // 登录成功，跳转
   setTimeout(() => {
     uni.switchTab({ url: '/pages/index/index' })
   }, 500)
