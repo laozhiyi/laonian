@@ -95,15 +95,53 @@
 
           <view class="form__item">
             <text class="form__label">课程视频</text>
-            <view class="video-upload-area" @tap="handleChooseVideo">
-              <view v-if="form.videoUrl" class="video-preview-box">
-                <video class="video-preview" :src="form.videoUrl" controls />
-                <view class="video-replace" @tap.stop="handleChooseVideo">重新选择视频</view>
+            <view class="video-upload-area">
+              <view v-if="form.videos && form.videos.length > 0" class="video-list-box">
+                <view class="video-list">
+                  <view class="video-item" v-for="(vid, idx) in form.videos" :key="idx">
+                    <video class="video-thumb" :src="vid.url" controls />
+                    <view class="video-item__info">
+                      <input
+                        class="video-title-input"
+                        v-model="vid.title"
+                        placeholder="输入视频名称"
+                        @blur="updateVideoTitle(idx, vid.title)"
+                      />
+                    </view>
+                    <view class="video-item__del" @tap.stop="removeVideo(idx)">✕</view>
+                  </view>
+                </view>
+                <view class="add-more-videos" @tap.stop="handleAddMoreVideo">
+                  <text class="add-more-icon">➕</text>
+                  <text>添加视频</text>
+                </view>
               </view>
-              <view v-else class="video-placeholder">
+              <view v-else class="video-placeholder" @tap.stop="handleChooseVideo">
                 <view class="video-placeholder__icon">🎬</view>
                 <text class="video-placeholder__text">点击上传视频</text>
-                <text class="video-placeholder__tip">支持 mp4, mov 格式</text>
+                <text class="video-placeholder__tip">支持多视频上传</text>
+              </view>
+            </view>
+          </view>
+
+          <!-- 视频选择弹窗 -->
+          <view class="video-modal" v-if="showVideoSelectModal" @tap="closeVideoModal">
+            <view class="video-modal__content" @tap.stop>
+              <view class="video-modal__header">
+                <text class="video-modal__title">选择视频</text>
+                <text class="video-modal__close" @tap="closeVideoModal">✕</text>
+              </view>
+              <view class="video-modal__tabs">
+                <view class="tab-btn" :class="{ 'tab-btn--active': videoTab === 'upload' }" @tap="videoTab = 'upload'">
+                  <text>上传视频</text>
+                </view>
+              </view>
+              <view class="upload-area" v-if="videoTab === 'upload'">
+                <view class="upload-btn upload-btn--video" @tap="handleChooseVideo">
+                  <text class="upload-icon">🎬</text>
+                  <text class="upload-text">点击上传视频文件</text>
+                  <text class="upload-tip">支持 mp4, mov 格式</text>
+                </view>
               </view>
             </view>
           </view>
@@ -940,6 +978,7 @@ const form = ref({
   title: '',
   cover: '',
   videoUrl: '',
+  videos: [],
   priceNow: '',
   priceOrigin: '',
   instructor: '',
@@ -1012,50 +1051,57 @@ const categoryOptions = ref([
 
 // 默认44个分类（老年大学课程分类）
 const defaultCategories = [
-  { id: 1, name: '公民素养', icon: '🏛️', color: '#4A90D9' },
-  { id: 2, name: '时代前沿', icon: '🚀', color: '#7B68EE' },
-  { id: 3, name: '时事思政', icon: '📰', color: '#DC143C' },
-  { id: 4, name: '隔代教育', icon: '👨‍👩‍👧', color: '#FF69B4' },
-  { id: 5, name: '哲学', icon: '🧠', color: '#4169E1' },
-  { id: 6, name: '文学', icon: '📚', color: '#8B4513' },
-  { id: 7, name: '数字素养', icon: '💻', color: '#2E8B57' },
-  { id: 8, name: '摄影', icon: '📷', color: '#FF6347' },
-  { id: 9, name: '表演', icon: '🎭', color: '#9370DB' },
-  { id: 10, name: '社会科学', icon: '🔬', color: '#20B2AA' },
-  { id: 11, name: '自然科学', icon: '🌍', color: '#3CB371' },
-  { id: 12, name: '农学', icon: '🌾', color: '#DAA520' },
-  { id: 13, name: '语言', icon: '🗣️', color: '#FF8C00' },
-  { id: 14, name: '数学', icon: '📐', color: '#4682B4' },
-  { id: 15, name: '学历教育', icon: '🎓', color: '#8B0000' },
-  { id: 16, name: '论文写作', icon: '✍️', color: '#556B2F' },
-  { id: 17, name: '医学', icon: '🏥', color: '#B22222' },
-  { id: 18, name: '家庭照护', icon: '🏠', color: '#FF7F50' },
-  { id: 19, name: '中医保健', icon: '🌿', color: '#228B22' },
-  { id: 20, name: '用药安全', icon: '💊', color: '#CD5C5C' },
-  { id: 21, name: '食品营养', icon: '🍎', color: '#32CD32' },
-  { id: 22, name: '心理健康', icon: '💚', color: '#6B8E23' },
-  { id: 23, name: '运动健康', icon: '🏃', color: '#FF4500' },
-  { id: 24, name: '慢病管理', icon: '🩺', color: '#8FBC8F' },
-  { id: 25, name: '口腔健康', icon: '🦷', color: '#87CEEB' },
-  { id: 26, name: '生命教育', icon: '🌱', color: '#98FB98' },
-  { id: 27, name: '老年痴呆防治', icon: '🧩', color: '#D8BFD8' },
-  { id: 28, name: '舞蹈', icon: '💃', color: '#FF1493' },
-  { id: 29, name: '声乐', icon: '🎤', color: '#FFD700' },
-  { id: 30, name: '器乐', icon: '🎸', color: '#C0C0C0' },
-  { id: 31, name: '书法', icon: '🖌️', color: '#8B4513' },
-  { id: 32, name: '绘画', icon: '🎨', color: '#FF69B4' },
-  { id: 33, name: '模特', icon: '👗', color: '#DDA0DD' },
-  { id: 34, name: '戏剧', icon: '🎬', color: '#FFA07A' },
-  { id: 35, name: '手工', icon: '🧶', color: '#F0E68C' },
-  { id: 36, name: '生活休闲', icon: '☕', color: '#DEB887' },
-  { id: 37, name: '历史地理', icon: '🗺️', color: '#778899' },
-  { id: 38, name: '文化', icon: '🏺', color: '#D2691E' },
-  { id: 39, name: '退休生涯规划', icon: '🌅', color: '#FF8C00' },
-  { id: 40, name: '投资理财', icon: '💰', color: '#FFD700' },
-  { id: 41, name: '志愿服务', icon: '❤️', color: '#FF6B6B' },
-  { id: 42, name: '创新创业', icon: '💡', color: '#9ACD32' },
-  { id: 43, name: '农业养殖', icon: '🐄', color: '#8FBC8F' },
-  { id: 44, name: '职业技能', icon: '💼', color: '#6495ED' },
+  { id: 1, name: '书法绘画', icon: '🎨', color: '#FF6B35' },
+  { id: 2, name: '音乐类', icon: '🎵', color: '#4ECDC4' },
+  { id: 3, name: '文史语言', icon: '📖', color: '#A855F7' },
+  { id: 4, name: '科普综合', icon: '🔬', color: '#3B82F6' },
+  { id: 5, name: '体育舞蹈', icon: '💃', color: '#10B981' },
+  { id: 6, name: '民俗文化', icon: '🏺', color: '#F59E0B' },
+  { id: 7, name: '养生健康', icon: '🌿', color: '#EF4444' },
+  { id: 8, name: '公民素养', icon: '🏛️', color: '#4A90D9' },
+  { id: 9, name: '时代前沿', icon: '🚀', color: '#7B68EE' },
+  { id: 10, name: '时事思政', icon: '📰', color: '#DC143C' },
+  { id: 11, name: '隔代教育', icon: '👨‍👩‍👧', color: '#FF69B4' },
+  { id: 12, name: '哲学', icon: '🧠', color: '#4169E1' },
+  { id: 13, name: '文学', icon: '📚', color: '#8B4513' },
+  { id: 14, name: '数字素养', icon: '💻', color: '#2E8B57' },
+  { id: 15, name: '摄影', icon: '📷', color: '#FF6347' },
+  { id: 16, name: '表演', icon: '🎭', color: '#9370DB' },
+  { id: 17, name: '社会科学', icon: '🔬', color: '#20B2AA' },
+  { id: 18, name: '自然科学', icon: '🌍', color: '#3CB371' },
+  { id: 19, name: '农学', icon: '🌾', color: '#DAA520' },
+  { id: 20, name: '语言', icon: '🗣️', color: '#FF8C00' },
+  { id: 21, name: '数学', icon: '📐', color: '#4682B4' },
+  { id: 22, name: '学历教育', icon: '🎓', color: '#8B0000' },
+  { id: 23, name: '论文写作', icon: '✍️', color: '#556B2F' },
+  { id: 24, name: '医学', icon: '🏥', color: '#B22222' },
+  { id: 25, name: '家庭照护', icon: '🏠', color: '#FF7F50' },
+  { id: 26, name: '中医保健', icon: '🌿', color: '#228B22' },
+  { id: 27, name: '用药安全', icon: '💊', color: '#CD5C5C' },
+  { id: 28, name: '食品营养', icon: '🍎', color: '#32CD32' },
+  { id: 29, name: '心理健康', icon: '💚', color: '#6B8E23' },
+  { id: 30, name: '运动健康', icon: '🏃', color: '#FF4500' },
+  { id: 31, name: '慢病管理', icon: '🩺', color: '#8FBC8F' },
+  { id: 32, name: '口腔健康', icon: '🦷', color: '#87CEEB' },
+  { id: 33, name: '生命教育', icon: '🌱', color: '#98FB98' },
+  { id: 34, name: '老年痴呆防治', icon: '🧩', color: '#D8BFD8' },
+  { id: 35, name: '舞蹈', icon: '💃', color: '#FF1493' },
+  { id: 36, name: '声乐', icon: '🎤', color: '#FFD700' },
+  { id: 37, name: '器乐', icon: '🎸', color: '#C0C0C0' },
+  { id: 38, name: '书法', icon: '🖌️', color: '#8B4513' },
+  { id: 39, name: '绘画', icon: '🎨', color: '#FF69B4' },
+  { id: 40, name: '模特', icon: '👗', color: '#DDA0DD' },
+  { id: 41, name: '戏剧', icon: '🎬', color: '#FFA07A' },
+  { id: 42, name: '手工', icon: '🧶', color: '#F0E68C' },
+  { id: 43, name: '生活休闲', icon: '☕', color: '#DEB887' },
+  { id: 44, name: '历史地理', icon: '🗺️', color: '#778899' },
+  { id: 45, name: '文化', icon: '🏺', color: '#D2691E' },
+  { id: 46, name: '退休生涯规划', icon: '🌅', color: '#FF8C00' },
+  { id: 47, name: '投资理财', icon: '💰', color: '#FFD700' },
+  { id: 48, name: '志愿服务', icon: '❤️', color: '#FF6B6B' },
+  { id: 49, name: '创新创业', icon: '💡', color: '#9ACD32' },
+  { id: 50, name: '农业养殖', icon: '🐄', color: '#8FBC8F' },
+  { id: 51, name: '职业技能', icon: '💼', color: '#6495ED' },
 ]
 
 // 分类默认封面图
@@ -1231,7 +1277,35 @@ const clearIntCover = () => {
   form.value.cover = ''
 }
 
-// 选择视频
+// 选择视频（多视频支持）
+const showVideoSelectModal = ref(false)
+const videoTab = ref('upload')
+
+const showVideoModal = () => {
+  showVideoSelectModal.value = true
+  videoTab.value = 'upload'
+}
+
+const closeVideoModal = () => {
+  showVideoSelectModal.value = false
+}
+
+const handleAddMoreVideo = () => {
+  showVideoModal()
+}
+
+const removeVideo = (index) => {
+  if (form.value.videos && form.value.videos.length > index) {
+    form.value.videos.splice(index, 1)
+  }
+}
+
+const updateVideoTitle = (index, title) => {
+  if (form.value.videos && form.value.videos.length > index) {
+    form.value.videos[index].title = title || ('视频 ' + (index + 1))
+  }
+}
+
 const handleChooseVideo = () => {
   uni.chooseVideo({
     sourceType: ['album', 'camera'],
@@ -1246,14 +1320,12 @@ const handleChooseVideo = () => {
 
       uni.showLoading({ title: '上传中...' })
       try {
-        // 上传到后端（不手动设置 Content-Type，uni 会自动加上正确的 multipart boundary）
         const uploadRes = await new Promise((resolve, reject) => {
           uni.uploadFile({
             url: '/api/upload/video',
             filePath: tempFilePath,
             name: 'file',
             success: (resp) => {
-              // uni.uploadFile 成功回调的 resp = { statusCode, data, header }
               try {
                 const parsed = typeof resp.data === 'string' ? JSON.parse(resp.data) : resp.data
                 resolve({ ...parsed, statusCode: resp.statusCode })
@@ -1268,13 +1340,18 @@ const handleChooseVideo = () => {
         })
 
         if (uploadRes.statusCode === 200 && uploadRes.ok) {
-          // 保存返回的URL（相对路径，前端通过 /uploads/... 访问）
-          form.value.videoUrl = uploadRes.url
+          const videoObj = {
+            url: uploadRes.url,
+            title: '视频 ' + ((form.value.videos?.length || 0) + 1)
+          }
+          if (!form.value.videos) form.value.videos = []
+          form.value.videos.push(videoObj)
+          showVideoSelectModal.value = false
           uni.hideLoading()
           uni.showToast({ title: '视频上传成功', icon: 'success' })
         } else {
           uni.hideLoading()
-          uni.showToast({ title: uploadRes.detail || '上传失败(' + (uploadRes.statusCode || '') + ')', icon: 'none', duration: 3000 })
+          uni.showToast({ title: uploadRes.detail || '上传失败', icon: 'none', duration: 3000 })
         }
       } catch (err) {
         uni.hideLoading()
@@ -1333,6 +1410,7 @@ const handleAdd = async () => {
     title: form.value.title.trim(),
     cover: form.value.cover.trim(),
     video_url: form.value.videoUrl?.trim() || null,
+    videos: form.value.videos || [],
     price: priceNow,
     price_now: priceNow,
     price_now_str: String(priceNow),
@@ -1352,7 +1430,7 @@ const handleAdd = async () => {
   }
 
   await loadCourses()
-  form.value = { title: '', cover: '', videoUrl: '', priceNow: '', priceOrigin: '', instructor: '', duration: '', level: '', category: '', tags: '', description: '' }
+  form.value = { title: '', cover: '', videoUrl: '', videos: [], priceNow: '', priceOrigin: '', instructor: '', duration: '', level: '', category: '', tags: '', description: '' }
   selectedLevel.value = ''
   selectedCategory.value = ''
   previewCover.value = ''
@@ -1366,6 +1444,7 @@ const handleEdit = (index) => {
     title: course.title || '',
     cover: course.cover || '',
     videoUrl: course.videoUrl || course.video_url || '',
+    videos: course.videos || [],
     priceNow: String(course.priceNow || course.price || ''),
     priceOrigin: String(course.priceOrigin || course.price || ''),
     instructor: course.instructor || '',
@@ -1400,6 +1479,7 @@ const handleUpdate = async () => {
     title: form.value.title.trim(),
     cover: form.value.cover.trim(),
     video_url: form.value.videoUrl?.trim() || null,
+    videos: form.value.videos || [],
     price: priceNow,
     price_now: priceNow,
     price_now_str: String(priceNow),
@@ -1426,7 +1506,7 @@ const handleUpdate = async () => {
 const cancelEdit = () => {
   isEditing.value = false
   editingId.value = ''
-  form.value = { title: '', cover: '', videoUrl: '', priceNow: '', priceOrigin: '', instructor: '', duration: '', level: '', category: '', tags: '', description: '' }
+  form.value = { title: '', cover: '', videoUrl: '', videos: [], priceNow: '', priceOrigin: '', instructor: '', duration: '', level: '', category: '', tags: '', description: '' }
   selectedLevel.value = ''
   selectedCategory.value = ''
   previewCover.value = ''
@@ -1720,10 +1800,17 @@ const loadCategories = async () => {
         ...res.list.map(c => ({ value: c.name, name: `${c.icon || '📁'} ${c.name}` }))
       ]
     } else {
-      // 使用44个默认分类
+      // 使用51个默认分类
       categoryList.value = defaultCategories
       categoryOptions.value = [
         { value: '', name: '请选择' },
+        { value: '书法绘画', name: '🎨 书法绘画' },
+        { value: '音乐类', name: '🎵 音乐类' },
+        { value: '文史语言', name: '📖 文史语言' },
+        { value: '科普综合', name: '🔬 科普综合' },
+        { value: '体育舞蹈', name: '💃 体育舞蹈' },
+        { value: '民俗文化', name: '🏺 民俗文化' },
+        { value: '养生健康', name: '🌿 养生健康' },
         { value: '公民素养', name: '🏛️ 公民素养' },
         { value: '时代前沿', name: '🚀 时代前沿' },
         { value: '时事思政', name: '📰 时事思政' },
@@ -1772,10 +1859,17 @@ const loadCategories = async () => {
     }
   } catch (error) {
     console.error('加载分类失败:', error)
-    // 使用44个默认分类
+    // 使用51个默认分类
     categoryList.value = defaultCategories
     categoryOptions.value = [
       { value: '', name: '请选择' },
+      { value: '书法绘画', name: '🎨 书法绘画' },
+      { value: '音乐类', name: '🎵 音乐类' },
+      { value: '文史语言', name: '📖 文史语言' },
+      { value: '科普综合', name: '🔬 科普综合' },
+      { value: '体育舞蹈', name: '💃 体育舞蹈' },
+      { value: '民俗文化', name: '🏺 民俗文化' },
+      { value: '养生健康', name: '🌿 养生健康' },
       { value: '公民素养', name: '🏛️ 公民素养' },
       { value: '时代前沿', name: '🚀 时代前沿' },
       { value: '时事思政', name: '📰 时事思政' },
@@ -2503,6 +2597,85 @@ $glass-bg: rgba(255, 255, 255, 0.75);
   }
 }
 
+.video-list-box {
+  width: 100%;
+  padding: 20rpx;
+}
+
+.video-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.video-item {
+  width: calc(50% - 8rpx);
+  position: relative;
+  border-radius: 16rpx;
+  overflow: hidden;
+  background: #000;
+
+  .video-thumb {
+    width: 100%;
+    height: 200rpx;
+  }
+
+  &__info {
+    padding: 8rpx 12rpx;
+    background: rgba(0, 0, 0, 0.6);
+  }
+
+  &__del {
+    position: absolute;
+    top: 8rpx;
+    right: 8rpx;
+    width: 44rpx;
+    height: 44rpx;
+    background: rgba(255, 59, 48, 0.9);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24rpx;
+    color: #fff;
+    z-index: 10;
+  }
+}
+
+.video-title-input {
+  width: 100%;
+  height: 60rpx;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 8rpx;
+  padding: 0 12rpx;
+  font-size: 24rpx;
+  color: #333;
+}
+
+.add-more-videos {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  width: 100%;
+  height: 200rpx;
+  margin-top: 16rpx;
+  border: 2rpx dashed $primary;
+  border-radius: 16rpx;
+  background: rgba(255, 107, 53, 0.05);
+
+  .add-more-icon {
+    font-size: 48rpx;
+    color: $primary;
+  }
+
+  text {
+    font-size: 24rpx;
+    color: $primary;
+  }
+}
+
 .video-preview-box {
   width: 100%;
   position: relative;
@@ -2994,6 +3167,66 @@ $glass-bg: rgba(255, 255, 255, 0.75);
   font-size: 24rpx;
   color: #ff3b30;
   font-weight: 500;
+}
+
+/* 视频选择弹窗 */
+.video-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  display: flex;
+  align-items: flex-end;
+}
+
+.video-modal__content {
+  width: 100%;
+  max-height: 70vh;
+  background: #fff;
+  border-radius: 32rpx 32rpx 0 0;
+  padding: 32rpx;
+  box-sizing: border-box;
+  animation: slideUpFade 0.3s ease;
+}
+
+.video-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24rpx;
+}
+
+.video-modal__title {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: $text;
+}
+
+.video-modal__close {
+  width: 56rpx;
+  height: 56rpx;
+  background: #f5f5f5;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  color: $sub;
+
+  &:active {
+    background: #eee;
+  }
+}
+
+.video-modal__tabs {
+  display: flex;
+  gap: 16rpx;
+  margin-bottom: 24rpx;
+}
+
+.upload-btn--video {
+  width: 100%;
+  height: 280rpx;
 }
 
 /* 余额管理样式 */

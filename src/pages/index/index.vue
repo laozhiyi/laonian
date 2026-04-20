@@ -63,12 +63,6 @@
           </view>
           <text class="quick-entry__text">我的收藏</text>
         </view>
-        <view class="quick-entry__item" @tap="goBalance">
-          <view class="quick-entry__icon quick-entry__icon--gold">
-            <text>💰</text>
-          </view>
-          <text class="quick-entry__text">余额充值</text>
-        </view>
       </view>
 
       <!-- 平台统计 -->
@@ -166,7 +160,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { getCurrentUser } from '@/utils/user.js'
-import { getCart } from '@/utils/cart.js'
 import { getCourses } from '@/utils/course.js'
 import { getExternalCourses } from '@/utils/external-course.js'
 
@@ -262,18 +255,6 @@ const goFavorites = () => {
   uni.navigateTo({ url: '/pages/favorite/favorite' })
 }
 
-const goBalance = () => {
-  const token = uni.getStorageSync('demo_token')
-  if (!token) {
-    uni.showToast({ title: '请先登录', icon: 'none' })
-    setTimeout(() => {
-      uni.navigateTo({ url: '/pages/auth/login' })
-    }, 500)
-    return
-  }
-  uni.navigateTo({ url: '/pages/balance/balance' })
-}
-
 const goAdmin = () => {
   uni.navigateTo({ url: '/pages/admin/admin' })
 }
@@ -303,17 +284,47 @@ onMounted(async () => {
 </script>
 
 <style lang="scss" scoped>
-// ========== 设计规范 ==========
-$primary: #2563EB;
-$primary-light: #3B82F6;
-$primary-dark: #1D4ED8;
-$secondary: #10B981;
-$accent: #F59E0B;
-$text-primary: #1E293B;
-$text-secondary: #64748B;
-$text-muted: #94A3B8;
-$bg-light: #F8FAFC;
-$bg-card: #FFFFFF;
+// ========== 新中式水墨风格设计规范 ==========
+// 色彩系统 - 融合传统水墨与现代简约
+$primary: #4A6FA5;           // 藏蓝色 - 书法绘画
+$primary-light: #6B8BB8;    // 浅藏蓝
+$secondary: #7BA05B;         // 松石绿 - 音乐类
+$accent: #D4915C;            // 赭石色 - 文史语言
+$accent-warm: #C4785C;       // 暖赭色
+$text-primary: #2C3E50;      // 墨色
+$text-secondary: #5D6D7E;    // 淡墨色
+$text-muted: #95A5A6;        // 浅墨色
+$bg-light: #FAF8F5;          // 宣纸白
+$bg-card: #FFFFFF;          // 卡片白
+$ink-red: #C94043;          // 梅花红
+$ink-brown: #8B7355;         // 棕褐色
+
+// 水墨渐变色
+$ink-gradient: linear-gradient(180deg, #E8E4DD 0%, #FAF8F5 100%);
+$mist-gradient: linear-gradient(180deg, rgba(139, 115, 85, 0.05) 0%, rgba(139, 115, 85, 0.02) 100%);
+
+@mixin ink-border {
+  border: 1px solid rgba(139, 115, 85, 0.15);
+  box-shadow: 0 4rpx 20rpx rgba(139, 115, 85, 0.08);
+}
+
+@mixin plum-blossom-decoration {
+  position: relative;
+  &::before {
+    content: '❀';
+    position: absolute;
+    top: -10rpx;
+    right: -10rpx;
+    font-size: 24rpx;
+    color: $ink-red;
+    opacity: 0.6;
+  }
+}
+
+@mixin ink-brush-stroke {
+  background: linear-gradient(135deg, rgba(74, 111, 165, 0.08) 0%, rgba(74, 111, 165, 0.02) 100%);
+  border-left: 4rpx solid $primary;
+}
 
 @keyframes slideUpFade {
   from { opacity: 0; transform: translateY(30rpx); }
@@ -325,9 +336,9 @@ $bg-card: #FFFFFF;
   50% { transform: translateY(-10rpx); }
 }
 
-@keyframes pulse-dot {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.6; transform: scale(0.8); }
+@keyframes mist-float {
+  0%, 100% { opacity: 0.3; transform: translateX(0); }
+  50% { opacity: 0.5; transform: translateX(10rpx); }
 }
 
 .page {
@@ -336,7 +347,7 @@ $bg-card: #FFFFFF;
   position: relative;
 }
 
-/* ========== 背景装饰 ========== */
+/* ========== 背景装饰 - 水墨山水意境 ========== */
 .bg-decoration {
   position: fixed;
   top: 0;
@@ -346,30 +357,44 @@ $bg-card: #FFFFFF;
   pointer-events: none;
   z-index: 0;
   overflow: hidden;
+  
+  // 水墨渐变背景
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: $ink-gradient;
+    opacity: 0.5;
+  }
 }
 
 .bg-blob {
   position: absolute;
-  border-radius: 50%;
-  filter: blur(120rpx);
+  opacity: 0.15;
 }
 
+// 远山剪影
 .bg-blob--1 {
-  width: 500rpx;
-  height: 500rpx;
-  background: linear-gradient(135deg, $primary 0%, $primary-light 100%);
-  top: -200rpx;
-  right: -150rpx;
-  opacity: 0.6;
+  width: 100%;
+  height: 400rpx;
+  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 400"><path fill="%238B7355" opacity="0.3" d="M0,400 L0,300 Q200,200 400,280 Q600,360 720,250 Q840,140 960,220 Q1080,300 1200,200 Q1320,100 1440,180 L1440,400 Z"/></svg>') no-repeat center bottom;
+  background-size: cover;
+  top: 0;
+  filter: blur(2px);
 }
 
+// 近景山峦
 .bg-blob--2 {
-  width: 400rpx;
-  height: 400rpx;
-  background: linear-gradient(135deg, $secondary 0%, #34D399 100%);
-  top: -100rpx;
-  left: -200rpx;
-  opacity: 0.4;
+  width: 100%;
+  height: 300rpx;
+  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 300"><path fill="%234A6FA5" opacity="0.15" d="M0,300 L0,200 Q300,100 600,180 Q900,260 1200,150 Q1350,80 1440,120 L1440,300 Z"/></svg>') no-repeat center bottom;
+  background-size: cover;
+  bottom: 0;
+  top: auto;
+  filter: blur(1px);
 }
 
 /* ========== 导航栏 ========== */
@@ -395,13 +420,14 @@ $bg-card: #FFFFFF;
 .brand-icon {
   width: 72rpx;
   height: 72rpx;
-  background: #fff;
-  border-radius: 20rpx;
+  background: $bg-card;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8rpx 24rpx rgba(37, 99, 235, 0.2);
-
+  @include ink-border;
+  @include plum-blossom-decoration;
+  
   text {
     font-size: 36rpx;
   }
@@ -416,13 +442,15 @@ $bg-card: #FFFFFF;
 .brand-name {
   font-size: 36rpx;
   font-weight: 700;
-  color: #000000;
-  letter-spacing: 2rpx;
+  color: $text-primary;
+  letter-spacing: 4rpx;
+  font-family: 'STKaiti', 'KaiTi', serif; // 华文楷体风格
 }
 
 .brand-slogan {
   font-size: 22rpx;
-  color: rgba(0, 0, 0, 0.6);
+  color: $text-muted;
+  letter-spacing: 2rpx;
 }
 
 /* ========== 滚动区域 ========== */
@@ -431,16 +459,40 @@ $bg-card: #FFFFFF;
   z-index: 1;
 }
 
-/* ========== 英雄横幅 ========== */
+/* ========== 英雄横幅 - 水墨画风格 ========== */
 .hero-banner {
   margin: 0 24rpx 32rpx;
-  background: linear-gradient(135deg, $primary 0%, $primary-light 50%, #60A5FA 100%);
-  border-radius: 32rpx;
+  background: $bg-card;
+  border-radius: 24rpx;
   padding: 48rpx 40rpx;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 20rpx 60rpx rgba(37, 99, 235, 0.3);
+  @include ink-border;
   animation: slideUpFade 0.6s ease-out;
+  
+  // 水墨山峦装饰
+  &::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 80%;
+    height: 120rpx;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 120"><path fill="%234A6FA5" opacity="0.08" d="M0,120 L0,80 Q100,40 200,70 Q300,100 400,50 L400,120 Z"/></svg>') no-repeat right bottom;
+    background-size: contain;
+    pointer-events: none;
+  }
+  
+  // 梅花装饰
+  &::after {
+    content: '✿';
+    position: absolute;
+    top: 20rpx;
+    right: 30rpx;
+    font-size: 32rpx;
+    color: $ink-red;
+    opacity: 0.5;
+  }
 }
 
 .hero-banner__content {
@@ -453,8 +505,8 @@ $bg-card: #FFFFFF;
   align-items: center;
   gap: 12rpx;
   padding: 10rpx 24rpx;
-  background: rgba(255, 255, 255, 0.2);
-  border: 1rpx solid rgba(255, 255, 255, 0.3);
+  background: $mist-gradient;
+  border: 1rpx solid rgba(74, 111, 165, 0.15);
   border-radius: 30rpx;
   margin-bottom: 24rpx;
 }
@@ -464,13 +516,13 @@ $bg-card: #FFFFFF;
   height: 10rpx;
   background: $secondary;
   border-radius: 50%;
-  animation: pulse-dot 2s ease-in-out infinite;
+  animation: float 2s ease-in-out infinite;
 }
 
 .hero-badge text {
   font-size: 22rpx;
   font-weight: 600;
-  color: #fff;
+  color: $primary;
   letter-spacing: 2rpx;
 }
 
@@ -478,16 +530,18 @@ $bg-card: #FFFFFF;
   display: block;
   font-size: 48rpx;
   font-weight: 700;
-  color: #fff;
-  letter-spacing: 4rpx;
+  color: $text-primary;
+  letter-spacing: 6rpx;
   margin-bottom: 16rpx;
+  font-family: 'STKaiti', 'KaiTi', serif;
 }
 
 .hero-subtitle {
   display: block;
   font-size: 26rpx;
-  color: rgba(255, 255, 255, 0.9);
+  color: $text-secondary;
   margin-bottom: 32rpx;
+  letter-spacing: 1rpx;
 }
 
 .hero-cta {
@@ -495,9 +549,10 @@ $bg-card: #FFFFFF;
   align-items: center;
   gap: 12rpx;
   padding: 20rpx 44rpx;
-  background: #fff;
+  background: $bg-card;
   border-radius: 40rpx;
-  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.15);
+  @include ink-border;
+  @include ink-brush-stroke;
 
   text {
     font-size: 28rpx;
@@ -507,11 +562,13 @@ $bg-card: #FFFFFF;
 
   &:active {
     transform: scale(0.96);
+    opacity: 0.9;
   }
 }
 
 .hero-cta__arrow {
   font-weight: 300;
+  color: $primary;
 }
 
 .hero-visual {
@@ -520,12 +577,12 @@ $bg-card: #FFFFFF;
   top: 50%;
   transform: translateY(-50%);
   z-index: 1;
+  opacity: 0.3;
 }
 
 .hero-shape {
   position: absolute;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
+  opacity: 0.2;
 }
 
 .hero-shape--1 {
@@ -533,7 +590,9 @@ $bg-card: #FFFFFF;
   height: 200rpx;
   top: -80rpx;
   right: -60rpx;
-  animation: float 6s ease-in-out infinite;
+  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><path fill="%238B7355" opacity="0.3" d="M100,20 L180,180 L20,180 Z"/></svg>') no-repeat center;
+  background-size: contain;
+  animation: mist-float 6s ease-in-out infinite;
 }
 
 .hero-shape--2 {
@@ -541,7 +600,9 @@ $bg-card: #FFFFFF;
   height: 120rpx;
   top: 40rpx;
   right: 0;
-  animation: float 8s ease-in-out infinite 1s;
+  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="%234A6FA5" opacity="0.2"/></svg>') no-repeat center;
+  background-size: contain;
+  animation: mist-float 8s ease-in-out infinite 1s;
 }
 
 .hero-shape--3 {
@@ -549,10 +610,12 @@ $bg-card: #FFFFFF;
   height: 80rpx;
   bottom: -40rpx;
   right: 60rpx;
+  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60"><path fill="%23C94043" opacity="0.3" d="M30,5 L35,25 L55,30 L35,35 L30,55 L25,35 L5,30 L25,25 Z"/></svg>') no-repeat center;
+  background-size: contain;
   animation: float 5s ease-in-out infinite 2s;
 }
 
-/* ========== 快速入口 ========== */
+/* ========== 快速入口 - 圆形图标 ========== */
 .quick-entry {
   display: flex;
   justify-content: space-around;
@@ -572,13 +635,27 @@ $bg-card: #FFFFFF;
 }
 
 .quick-entry__icon {
-  width: 96rpx;
-  height: 96rpx;
-  border-radius: 24rpx;
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.08);
+  @include ink-border;
+  background: $bg-card;
+  position: relative;
+  
+  // 梅花装饰
+  &::before {
+    content: '❀';
+    position: absolute;
+    top: -5rpx;
+    right: -5rpx;
+    font-size: 16rpx;
+    color: $ink-red;
+    opacity: 0.4;
+    transform: rotate(30deg);
+  }
 
   text {
     font-size: 44rpx;
@@ -586,19 +663,19 @@ $bg-card: #FFFFFF;
 }
 
 .quick-entry__icon--blue {
-  background: linear-gradient(135deg, $primary, $primary-light);
+  border-left: 4rpx solid $primary;
 }
 
 .quick-entry__icon--green {
-  background: linear-gradient(135deg, $secondary, #34D399);
+  border-left: 4rpx solid $secondary;
 }
 
 .quick-entry__icon--pink {
-  background: linear-gradient(135deg, #EC4899, #F472B6);
+  border-left: 4rpx solid $ink-red;
 }
 
 .quick-entry__icon--gold {
-  background: linear-gradient(135deg, $accent, #FBBF24);
+  border-left: 4rpx solid $accent;
 }
 
 .quick-entry__text {
@@ -607,7 +684,7 @@ $bg-card: #FFFFFF;
   font-weight: 500;
 }
 
-/* ========== 区块通用 ========== */
+/* ========== 区块通用 - 水墨风格 ========== */
 .section {
   padding: 0 24rpx 32rpx;
   animation: slideUpFade 0.6s ease-out 0.15s both;
@@ -630,6 +707,8 @@ $bg-card: #FFFFFF;
   font-size: 36rpx;
   font-weight: 700;
   color: $text-primary;
+  letter-spacing: 4rpx;
+  font-family: 'STKaiti', 'KaiTi', serif;
 }
 
 .section__subtitle {
@@ -642,14 +721,15 @@ $bg-card: #FFFFFF;
   align-items: center;
   gap: 4rpx;
   padding: 10rpx 20rpx;
-  background: rgba(37, 99, 235, 0.08);
+  background: $mist-gradient;
+  border: 1rpx solid rgba(74, 111, 165, 0.1);
   border-radius: 24rpx;
   font-size: 24rpx;
   color: $primary;
   font-weight: 500;
 
   &:active {
-    background: rgba(37, 99, 235, 0.15);
+    background: rgba(74, 111, 165, 0.08);
   }
 }
 
@@ -668,10 +748,23 @@ $bg-card: #FFFFFF;
   width: 280rpx;
   margin-right: 20rpx;
   background: $bg-card;
-  border-radius: 20rpx;
+  border-radius: 16rpx;
   overflow: hidden;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+  @include ink-border;
   vertical-align: top;
+  position: relative;
+  
+  // 水墨边框效果
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4rpx;
+    background: linear-gradient(90deg, $primary, $secondary, $accent);
+    opacity: 0.6;
+  }
 
   &:active {
     transform: scale(0.98);
@@ -695,11 +788,13 @@ $bg-card: #FFFFFF;
   top: 12rpx;
   left: 12rpx;
   padding: 6rpx 14rpx;
-  background: $accent;
+  background: $bg-card;
+  border: 1px solid rgba(74, 111, 165, 0.2);
   border-radius: 8rpx;
   font-size: 20rpx;
   font-weight: 600;
-  color: #fff;
+  color: $primary;
+  @include ink-border;
 }
 
 .course-card__info {
@@ -715,6 +810,7 @@ $bg-card: #FFFFFF;
   -webkit-box-orient: vertical;
   overflow: hidden;
   margin-bottom: 8rpx;
+  letter-spacing: 1rpx;
 }
 
 .course-card__category {
@@ -731,7 +827,7 @@ $bg-card: #FFFFFF;
 .course-card__price {
   font-size: 32rpx;
   font-weight: 700;
-  color: $primary;
+  color: $accent-warm;
 }
 
 .course-card__price--free {
@@ -749,9 +845,10 @@ $bg-card: #FFFFFF;
 .course-item {
   display: flex;
   background: $bg-card;
-  border-radius: 20rpx;
+  border-radius: 16rpx;
   overflow: hidden;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+  @include ink-border;
+  @include ink-brush-stroke;
 
   &:active {
     transform: scale(0.99);
@@ -763,6 +860,19 @@ $bg-card: #FFFFFF;
   width: 200rpx;
   height: 160rpx;
   flex-shrink: 0;
+  position: relative;
+  
+  // 水墨边框
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 4rpx;
+    height: 100%;
+    background: linear-gradient(180deg, $primary, $secondary);
+    opacity: 0.3;
+  }
 }
 
 .course-item__info {
@@ -782,6 +892,7 @@ $bg-card: #FFFFFF;
   -webkit-box-orient: vertical;
   overflow: hidden;
   margin-bottom: 8rpx;
+  letter-spacing: 1rpx;
 }
 
 .course-item__category {
@@ -799,7 +910,7 @@ $bg-card: #FFFFFF;
 .course-item__price {
   font-size: 32rpx;
   font-weight: 700;
-  color: $primary;
+  color: $accent-warm;
 }
 
 .course-item__price--free {
@@ -809,18 +920,19 @@ $bg-card: #FFFFFF;
 
 .course-item__btn {
   padding: 10rpx 24rpx;
-  background: $primary;
+  background: $bg-card;
+  border: 1px solid $primary;
   border-radius: 20rpx;
   font-size: 22rpx;
   font-weight: 600;
-  color: #fff;
+  color: $primary;
 
   text {
-    color: #fff;
+    color: $primary;
   }
 }
 
-/* ========== 统计数据 ========== */
+/* ========== 统计数据 - 水墨卡片 ========== */
 .stats-section {
   padding: 0 24rpx 32rpx;
   animation: slideUpFade 0.6s ease-out 0.2s both;
@@ -828,9 +940,22 @@ $bg-card: #FFFFFF;
 
 .stats-card {
   background: $bg-card;
-  border-radius: 24rpx;
+  border-radius: 20rpx;
   padding: 32rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+  @include ink-border;
+  position: relative;
+  overflow: hidden;
+  
+  // 梅花装饰
+  &::before {
+    content: '❀';
+    position: absolute;
+    top: 10rpx;
+    right: 20rpx;
+    font-size: 40rpx;
+    color: $ink-red;
+    opacity: 0.15;
+  }
 }
 
 .stats-header {
@@ -841,6 +966,8 @@ $bg-card: #FFFFFF;
   font-size: 32rpx;
   font-weight: 700;
   color: $text-primary;
+  letter-spacing: 4rpx;
+  font-family: 'STKaiti', 'KaiTi', serif;
 }
 
 .stats-grid {
@@ -859,6 +986,7 @@ $bg-card: #FFFFFF;
   font-size: 44rpx;
   font-weight: 700;
   color: $primary;
+  letter-spacing: 2rpx;
 }
 
 .stats-label {
@@ -866,7 +994,7 @@ $bg-card: #FFFFFF;
   color: $text-muted;
 }
 
-/* ========== 服务保障 ========== */
+/* ========== 服务保障 - 印章风格 ========== */
 .service-section {
   padding: 0 24rpx 32rpx;
   animation: slideUpFade 0.6s ease-out 0.25s both;
@@ -874,9 +1002,9 @@ $bg-card: #FFFFFF;
 
 .service-card {
   background: $bg-card;
-  border-radius: 24rpx;
+  border-radius: 20rpx;
   padding: 32rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+  @include ink-border;
 }
 
 .service-header {
@@ -887,6 +1015,8 @@ $bg-card: #FFFFFF;
   font-size: 32rpx;
   font-weight: 700;
   color: $text-primary;
+  letter-spacing: 4rpx;
+  font-family: 'STKaiti', 'KaiTi', serif;
 }
 
 .service-grid {
@@ -900,23 +1030,25 @@ $bg-card: #FFFFFF;
   align-items: center;
   gap: 16rpx;
   padding: 20rpx;
-  background: #F8FAFC;
+  background: $mist-gradient;
   border-radius: 16rpx;
+  border-left: 3px solid $ink-brown;
 
   &:active {
-    background: #F1F5F9;
+    background: rgba(139, 115, 85, 0.08);
   }
 }
 
 .service-item__icon {
   width: 56rpx;
   height: 56rpx;
-  background: $primary;
-  border-radius: 14rpx;
+  background: $bg-card;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  @include ink-border;
 
   text {
     font-size: 28rpx;
@@ -929,7 +1061,7 @@ $bg-card: #FFFFFF;
   color: $text-primary;
 }
 
-/* ========== 关于我们 ========== */
+/* ========== 关于我们 - 水墨风格 ========== */
 .about-section {
   padding: 0 24rpx 32rpx;
   animation: slideUpFade 0.6s ease-out 0.3s both;
@@ -941,23 +1073,26 @@ $bg-card: #FFFFFF;
   gap: 20rpx;
   padding: 28rpx 32rpx;
   background: $bg-card;
-  border-radius: 24rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+  border-radius: 20rpx;
+  @include ink-border;
+  @include ink-brush-stroke;
 
   &:active {
-    background: #F8FAFC;
+    background: rgba(74, 111, 165, 0.02);
   }
 }
 
 .about-icon {
   width: 64rpx;
   height: 64rpx;
-  background: linear-gradient(135deg, $primary, $primary-light);
-  border-radius: 16rpx;
+  background: $bg-card;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  @include ink-border;
+  @include plum-blossom-decoration;
 
   text {
     font-size: 30rpx;
@@ -975,6 +1110,7 @@ $bg-card: #FFFFFF;
   font-size: 30rpx;
   font-weight: 600;
   color: $text-primary;
+  letter-spacing: 2rpx;
 }
 
 .about-desc {
@@ -999,25 +1135,26 @@ $bg-card: #FFFFFF;
   align-items: center;
   gap: 20rpx;
   padding: 28rpx 32rpx;
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.06), rgba(37, 99, 235, 0.02));
-  border: 1rpx solid rgba(37, 99, 235, 0.12);
-  border-radius: 24rpx;
+  background: $bg-card;
+  border-radius: 20rpx;
+  @include ink-border;
+  border-left: 4px solid $primary;
 
   &:active {
-    background: linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(37, 99, 235, 0.04));
+    background: rgba(74, 111, 165, 0.02);
   }
 }
 
 .admin-icon {
   width: 80rpx;
   height: 80rpx;
-  background: $primary;
-  border-radius: 20rpx;
+  background: $bg-card;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 8rpx 24rpx rgba(37, 99, 235, 0.25);
+  @include ink-border;
 
   text {
     font-size: 38rpx;
@@ -1035,6 +1172,7 @@ $bg-card: #FFFFFF;
   font-size: 30rpx;
   font-weight: 600;
   color: $text-primary;
+  letter-spacing: 2rpx;
 }
 
 .admin-desc {

@@ -27,51 +27,47 @@
     </view>
 
     <template v-else>
-      <!-- 视频区域（有视频且已购买才显示播放器） -->
-      <view class="video-area" :style="{ top: (statusBarHeight + navHeight) + 'px' }" v-if="hasVideo">
-        <video
-          v-if="isPurchased"
-          class="video-player"
-          :src="fullVideoUrl"
-          controls
-          autoplay
-          object-fit="contain"
-          :poster="course.cover"
-        />
-        <view v-else class="video-locked">
-          <view class="video-locked__icon">🔒</view>
-          <text class="video-locked__text">购买后可观看视频</text>
-          <view class="video-locked__cover">
-            <image class="video-locked__img" :src="course.cover" mode="aspectFill" />
-            <view class="video-locked__mask">
-              <view class="video-locked__play">▶</view>
+      <!-- 封面图/视频区域（固定在顶部） -->
+      <view class="media-wrap" :style="{ paddingTop: (statusBarHeight + navHeight) + 'px' }">
+        <!-- 无视频时显示封面图 -->
+        <image class="cover" :src="course.cover" mode="aspectFill" v-if="!hasVideo" />
+
+        <!-- 有视频时显示视频播放器 -->
+        <view class="video-section" v-if="hasVideo">
+          <video
+            v-if="isPurchased"
+            class="video-player"
+            :src="(videos.length > 0 ? videos[currentVideoIndex]?.url : fullVideoUrl) || ''"
+            controls
+            object-fit="contain"
+            :poster="course.cover"
+          />
+          <view v-else class="video-locked">
+            <view class="video-locked__icon">🔒</view>
+            <text class="video-locked__text">购买后可观看视频</text>
+            <view class="video-locked__cover">
+              <image class="video-locked__img" :src="course.cover" mode="aspectFill" />
+              <view class="video-locked__mask">
+                <view class="video-locked__play">▶</view>
+              </view>
             </view>
           </view>
         </view>
-      </view>
 
-      <!-- 封面图（无视频时显示） -->
-      <view class="cover-wrap" :style="{ paddingTop: (statusBarHeight + navHeight) + 'px' }" v-if="!hasVideo">
-        <image class="cover" :src="course.cover" mode="aspectFill" />
-        <view class="back-btn" :style="{ top: (statusBarHeight + navHeight + 16) + 'px' }" @tap="goBack">‹</view>
+        <!-- 级别标签 -->
         <view class="level-badge" v-if="course.level">{{ course.level }}</view>
       </view>
 
       <!-- 课程信息 -->
       <scroll-view class="scroll" :style="scrollStyle" scroll-y>
         <view class="info-wrap">
-          <!-- 价格行 -->
-          <view class="price-row">
-            <text class="price-symbol">¥</text>
-            <text class="price-value">{{ displayPrice }}</text>
-            <text class="price-original" v-if="displayOriginalPrice">¥{{ displayOriginalPrice }}</text>
-            <view class="price-tag" v-if="displayOriginalPrice">
-              <text>限时优惠</text>
+          <!-- 标题和收藏 -->
+          <view class="title-row">
+            <view class="title">{{ course.title || '课程标题' }}</view>
+            <view class="favorite-btn" @tap="toggleFavorite">
+              <text>{{ isFavorited ? '❤️' : '🤍' }}</text>
             </view>
           </view>
-
-          <!-- 标题 -->
-          <view class="title">{{ course.title || '课程标题' }}</view>
 
           <!-- 课程元信息 -->
           <view class="meta-row">
@@ -108,55 +104,62 @@
             <text class="video-hint__text">本课程包含视频，购买后可学习</text>
           </view>
 
-          <!-- 课程描述 -->
-          <view class="desc-section">
-            <view class="desc-title">课程介绍</view>
+          <!-- 课程内容切换标签 -->
+          <view class="content-tabs">
+            <view
+              class="content-tab"
+              :class="{ 'content-tab--active': activeTab === 'intro' }"
+              @tap="activeTab = 'intro'"
+            >
+              <text>课程介绍</text>
+            </view>
+            <view
+              class="content-tab"
+              :class="{ 'content-tab--active': activeTab === 'videos' }"
+              @tap="switchToVideos"
+              v-if="hasVideo"
+            >
+              <text>课程视频 ({{ videos.length || (fullVideoUrl ? 1 : 0) }})</text>
+            </view>
+          </view>
+
+          <!-- 课程介绍内容 -->
+          <view class="desc-section" v-show="activeTab === 'intro'">
             <view class="desc-content">{{ course.desc || course.description || '暂无介绍' }}</view>
           </view>
 
-          <!-- 购买提示（已购买） -->
-          <view class="purchased-hint" v-if="isPurchased">
-            <text class="purchased-hint__icon">✅</text>
-            <text class="purchased-hint__text">您已购买此课程，可直接学习</text>
+          <!-- 课程视频内容（只显示视频名称列表） -->
+          <view class="videos-section" v-show="activeTab === 'videos' && hasVideo">
+            <view class="video-name-list">
+              <view
+                class="video-name-item"
+                :class="{ 'video-name-item--active': idx === currentVideoIndex }"
+                v-for="(video, idx) in (videos.length > 0 ? videos : (fullVideoUrl ? [{ url: fullVideoUrl, title: '视频 1' }] : []))"
+                :key="idx"
+                @tap="switchVideo(idx)"
+              >
+                <view class="video-name-item__play">{{ idx === currentVideoIndex ? '▶' : '' }}</view>
+                <text class="video-name-item__num">{{ idx + 1 }}</text>
+                <text class="video-name-item__text">{{ video.title || '视频 ' + (idx + 1) }}</text>
+              </view>
+            </view>
           </view>
+
+
 
           <view class="bottom-spacer" />
         </view>
       </scroll-view>
-
-      <!-- 底部操作栏 -->
-      <view class="bottom-bar">
-        <view class="action-btn action-btn--secondary" @tap="goMall">
-          <text class="action-btn__icon">🛒</text>
-          <text class="action-btn__text">商城</text>
-        </view>
-
-        <!-- 已购买 → 立即学习 -->
-        <view class="action-btn action-btn--learn" v-if="isPurchased" @tap="startLearn">
-          <text class="action-btn__icon">🚀</text>
-          <text class="action-btn__text">开始学习</text>
-        </view>
-
-        <!-- 免费 → 直接领取 -->
-        <view class="action-btn action-btn--learn" v-else-if="course.priceNow === 0 || (!course.priceNow && !course.price) || course.priceNow == null" @tap="freeEnroll">
-          <text class="action-btn__icon">🎁</text>
-          <text class="action-btn__text">免费领取</text>
-        </view>
-
-        <!-- 未购买 → 立即购买 -->
-        <view class="action-btn action-btn--buy" v-else @tap="handleBuy">
-          <text class="action-btn__icon">💳</text>
-          <text class="action-btn__text">立即购买 ¥{{ displayPrice }}</text>
-        </view>
-      </view>
     </template>
   </view>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { getCourseDetail, purchaseInternalCourse, checkInternalCoursePurchased } from '@/utils/course.js'
-import { getCurrentUserId } from '@/utils/user.js'
+import { getCurrentUser } from '@/utils/user.js'
+import { getFavorites, addFavorite, removeFavoriteByCourse } from '@/utils/favorite.js'
 
 const statusBarHeight = ref(0)
 const navHeight = ref(88)
@@ -166,8 +169,21 @@ const productNotFound = ref(false)
 const course = ref({})
 const isPurchased = ref(false)
 const purchasedVideoUrl = ref('')
+const currentVideoIndex = ref(0)
+const activeTab = ref('intro')
 
-const hasVideo = computed(() => !!(course.value.videoUrl || course.value.video_url))
+// 收藏功能
+const isFavorited = ref(false)
+const favoriteId = ref(null)
+
+const hasVideo = computed(() => !!(course.value.videoUrl || course.value.video_url || (course.value.videos && course.value.videos.length > 0)))
+
+const videos = computed(() => {
+  if (course.value.videos && course.value.videos.length > 0) {
+    return course.value.videos
+  }
+  return []
+})
 
 const fullVideoUrl = computed(() => {
   const url = course.value.videoUrl || course.value.video_url || ''
@@ -194,24 +210,12 @@ const displayOriginalPrice = computed(() => {
   return null
 })
 
-// scroll-view 样式（固定定位，动态计算 top 和 height）
+// scroll-view 样式（固定定位，动态计算 top）
 const scrollStyle = computed(() => {
   const navTotal = statusBarHeight.value + navHeight.value
-  const videoAreaPx = 360 // 视频区域高度（rpx 360 ≈ px 360）
-  const bottomBarPx = 140 // 底部栏高度
-
-  const scrollTop = hasVideo.value
-    ? navTotal + videoAreaPx
-    : navTotal + 300 // 无视频时，封面图下方开始
 
   return {
-    position: 'fixed',
-    top: scrollTop + 'px',
-    left: '0',
-    right: '0',
-    bottom: (bottomBarPx + 40) + 'px',
-    'overflow-y': 'auto',
-    'overflow-x': 'hidden',
+    paddingTop: '0',
   }
 })
 
@@ -239,27 +243,95 @@ const goMall = () => {
 
 // 开始学习
 const startLearn = () => {
-  const url = course.value.videoUrl || course.value.video_url
-  if (url) {
-    uni.showModal({
-      title: '开始学习',
-      content: '点击确定跳转视频页面',
-      confirmText: '确定',
-      success: () => {
-        // 视频在页面顶部已显示，直接滚动到顶部
-        uni.pageScrollTo({ scrollTop: 0, duration: 300 })
-        uni.showToast({ title: '视频已加载，开始学习吧', icon: 'none', duration: 2000 })
-      }
-    })
+  if (videos.value && videos.value.length > 0) {
+    // 切换到第一个视频
+    switchVideo(0)
+    uni.pageScrollTo({ scrollTop: 0, duration: 300 })
+    uni.showToast({ title: '视频已加载，开始学习吧', icon: 'none', duration: 2000 })
   } else {
-    uni.showToast({ title: '暂无视频内容', icon: 'none' })
+    const url = course.value.videoUrl || course.value.video_url
+    if (url) {
+      uni.showModal({
+        title: '开始学习',
+        content: '点击确定跳转视频页面',
+        confirmText: '确定',
+        success: () => {
+          uni.pageScrollTo({ scrollTop: 0, duration: 300 })
+          uni.showToast({ title: '视频已加载，开始学习吧', icon: 'none', duration: 2000 })
+        }
+      })
+    } else {
+      uni.showToast({ title: '暂无视频内容', icon: 'none' })
+    }
   }
+}
+
+const switchVideo = (index) => {
+  currentVideoIndex.value = index
+  activeTab.value = 'videos'
+}
+
+const switchToVideos = () => {
+  activeTab.value = 'videos'
+}
+
+// 加载收藏状态
+const loadFavoriteStatus = async () => {
+  const user = getCurrentUser()
+  if (!user?.id || !course.value.id) return
+  
+  try {
+    const res = await getFavorites(user.id)
+    if (res.ok) {
+      const favorite = res.list.find(item => 
+        item.course_id === course.value.id && item.is_external === false
+      )
+      if (favorite) {
+        isFavorited.value = true
+        favoriteId.value = favorite.id
+      }
+    }
+  } catch (e) {
+    console.error('加载收藏状态失败:', e)
+  }
+}
+
+// 切换收藏状态
+const toggleFavorite = async () => {
+  const user = getCurrentUser()
+  if (!user?.id) {
+    uni.showToast({ title: '请先登录', icon: 'none' })
+    setTimeout(() => uni.navigateTo({ url: '/pages/auth/login' }), 1000)
+    return
+  }
+  
+  if (isFavorited.value) {
+    // 取消收藏
+    const res = await removeFavoriteByCourse(user.id, course.value.id, false)
+    if (res.ok) {
+      isFavorited.value = false
+      favoriteId.value = null
+      uni.showToast({ title: '已取消收藏', icon: 'none' })
+    }
+  } else {
+    // 添加收藏
+    const res = await addFavorite(user.id, course.value.id, false)
+    if (res.ok) {
+      isFavorited.value = true
+      favoriteId.value = res.id
+      uni.showToast({ title: '已收藏', icon: 'success' })
+    }
+  }
+}
+
+const onVideoSwiperChange = (e) => {
+  currentVideoIndex.value = e.detail.current
 }
 
 // 免费领取（直接购买）
 const freeEnroll = async () => {
-  const userId = getCurrentUserId()
-  if (!userId) {
+  const user = getCurrentUser()
+  if (!user?.id) {
     uni.showToast({ title: '请先登录', icon: 'none' })
     setTimeout(() => uni.navigateTo({ url: '/pages/auth/login' }), 1000)
     return
@@ -279,54 +351,6 @@ const freeEnroll = async () => {
     } else {
       uni.showToast({ title: res.message || '领取失败', icon: 'none' })
     }
-  }
-}
-
-// 购买课程
-const handleBuy = async () => {
-  try {
-    const userId = getCurrentUserId()
-    if (!userId) {
-      uni.showToast({ title: '请先登录', icon: 'none' })
-      setTimeout(() => uni.navigateTo({ url: '/pages/auth/login' }), 1000)
-      return
-    }
-
-    // 确保价格是数字
-    const price = Number(course.value.priceNow) || Number(course.value.price) || 0
-
-    const confirmed = await new Promise((resolve) => {
-      uni.showModal({
-        title: '确认购买',
-        content: `是否购买《${course.value.title}》？\n价格：¥${price.toFixed(2)}`,
-        confirmText: '立即购买',
-        success: (res) => {
-          resolve(res.confirm)
-        }
-      })
-    })
-
-    if (!confirmed) return
-
-    uni.showLoading({ title: '购买中...' })
-    const result = await purchaseInternalCourse(course.value.id)
-    uni.hideLoading()
-
-    if (result.ok) {
-      isPurchased.value = true
-      uni.showToast({ title: '购买成功', icon: 'success' })
-    } else {
-      if (result.message && result.message.includes('已购买')) {
-        isPurchased.value = true
-        uni.showToast({ title: '您已购买此课程', icon: 'none' })
-      } else {
-        uni.showToast({ title: result.message || '购买失败', icon: 'none' })
-      }
-    }
-  } catch (e) {
-    console.error('购买课程出错:', e)
-    uni.hideLoading()
-    uni.showToast({ title: e.message || '网络错误，请重试', icon: 'none' })
   }
 }
 
@@ -353,8 +377,9 @@ const loadCourse = async () => {
       }
       productNotFound.value = false
 
-      // 检查购买状态
+      // 检查购买状态和收藏状态
       await checkPurchaseStatus()
+      await loadFavoriteStatus()
     } else {
       productNotFound.value = true
     }
@@ -370,8 +395,8 @@ const loadCourse = async () => {
 const checkPurchaseStatus = async () => {
   if (!course.value.id) return
 
-  const userId = getCurrentUserId()
-  if (!userId) return
+  const user = getCurrentUser()
+  if (!user?.id) return
 
   try {
     const res = await checkInternalCoursePurchased(course.value.id)
@@ -388,6 +413,13 @@ onMounted(() => {
   const sys = uni.getSystemInfoSync()
   statusBarHeight.value = sys.statusBarHeight || 0
   loadCourse()
+})
+
+// onShow 中加载收藏状态（每次进入页面时刷新）
+onShow(() => {
+  if (course.value.id) {
+    loadFavoriteStatus()
+  }
 })
 </script>
 
@@ -531,14 +563,35 @@ $bg-card: #FFFFFF;
   box-shadow: 0 8rpx 24rpx rgba(37, 99, 235, 0.3);
 }
 
-/* 视频区域 */
-.video-area {
-  position: fixed;
-  left: 0;
-  right: 0;
+/* 媒体区域（封面图/视频轮播） */
+.media-wrap {
+  position: relative;
+  width: 100%;
+  background: #f0f0f0;
+}
+
+.cover {
+  width: 100%;
+  height: 480rpx;
+  display: block;
+}
+
+.level-badge {
+  position: absolute;
+  right: 32rpx;
+  bottom: 32rpx;
+  padding: 12rpx 24rpx;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 16rpx;
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #fff;
+}
+
+.video-section {
+  width: 100%;
   height: 480rpx;
   background: #000;
-  z-index: 90;
 }
 
 .video-player {
@@ -635,36 +688,19 @@ $bg-card: #FFFFFF;
   &:active { transform: scale(0.9); }
 }
 
-.level-badge {
-  position: absolute;
-  right: 32rpx;
-  bottom: 32rpx;
-  padding: 12rpx 24rpx;
-  background: rgba(0, 0, 0, 0.6);
-  border-radius: 16rpx;
-  font-size: 24rpx;
-  font-weight: 600;
-  color: #fff;
-}
-
 /* 课程信息 */
 .scroll {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 80;
   background: $bg-card;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .info-wrap {
   background: $bg-card;
   border-radius: 48rpx 48rpx 0 0;
-  margin-top: 0;
+  margin-top: -24rpx;
   position: relative;
   padding: 48rpx 32rpx 40rpx;
   box-shadow: 0 -8rpx 40rpx rgba(0, 0, 0, 0.08);
-  animation: slideUp 0.5s ease-out;
 }
 
 .price-row {
@@ -704,12 +740,37 @@ $bg-card: #FFFFFF;
   font-weight: 600;
 }
 
+.title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24rpx;
+  gap: 16rpx;
+}
+
 .title {
+  flex: 1;
   font-size: 36rpx;
   font-weight: 700;
   color: $text-primary;
   line-height: 1.5;
-  margin-bottom: 24rpx;
+}
+
+.favorite-btn {
+  width: 64rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(37, 99, 235, 0.08);
+  border-radius: 50%;
+  font-size: 36rpx;
+  flex-shrink: 0;
+  
+  &:active {
+    transform: scale(0.9);
+    background: rgba(37, 99, 235, 0.15);
+  }
 }
 
 .meta-row {
@@ -761,6 +822,212 @@ $bg-card: #FFFFFF;
 
 .video-hint__icon { font-size: 36rpx; }
 .video-hint__text { font-size: 28rpx; color: $primary; font-weight: 500; }
+
+/* 课程视频列表 */
+.videos-section {
+  padding: 16rpx 0;
+}
+
+.video-player-box {
+  width: 100%;
+  height: 400rpx;
+  background: #000;
+  margin-bottom: 24rpx;
+}
+
+.video-player-box .video-player {
+  width: 100%;
+  height: 100%;
+}
+
+/* 视频名称列表 */
+.video-name-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  padding: 0 8rpx;
+}
+
+.video-name-item {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 20rpx 24rpx;
+  background: $bg-light;
+  border-radius: 16rpx;
+  border: 2rpx solid transparent;
+  transition: all 0.3s;
+
+  &--active {
+    background: rgba(37, 99, 235, 0.08);
+    border-color: $primary;
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+
+  &__play {
+    width: 40rpx;
+    height: 40rpx;
+    background: $primary;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20rpx;
+    color: #fff;
+    flex-shrink: 0;
+  }
+
+  &__num {
+    width: 48rpx;
+    height: 48rpx;
+    background: rgba(37, 99, 235, 0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24rpx;
+    font-weight: 600;
+    color: $primary;
+    flex-shrink: 0;
+  }
+
+  &--active &__num {
+    background: $primary;
+    color: #fff;
+  }
+
+  &__text {
+    flex: 1;
+    font-size: 28rpx;
+    color: $text-secondary;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &--active &__text {
+    color: $primary;
+    font-weight: 600;
+  }
+}
+
+/* 课程内容切换标签 */
+.content-tabs {
+  display: flex;
+  gap: 16rpx;
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid #E2E8F0;
+  margin-bottom: 24rpx;
+}
+
+.content-tab {
+  padding: 12rpx 32rpx;
+  background: $bg-light;
+  border-radius: 32rpx;
+  font-size: 28rpx;
+  color: $text-secondary;
+  transition: all 0.3s;
+
+  &--active {
+    background: $primary;
+    color: #fff;
+    font-weight: 600;
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+/* 课程视频列表 */
+.videos-section {
+  padding: 16rpx 0;
+}
+
+.video-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16rpx;
+}
+
+.video-list .video-item {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: 16rpx;
+  overflow: hidden;
+  border: 4rpx solid transparent;
+  transition: all 0.3s;
+
+  &--active {
+    border-color: $primary;
+    transform: scale(1.02);
+  }
+
+  .video-thumb {
+    width: 100%;
+    height: 100%;
+    background: #000;
+  }
+
+  &__mask {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &__play {
+    width: 56rpx;
+    height: 56rpx;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24rpx;
+    color: $primary;
+    padding-left: 4rpx;
+  }
+
+  &__label {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 8rpx 12rpx;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+    font-size: 24rpx;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__num {
+    position: absolute;
+    top: 8rpx;
+    left: 8rpx;
+    width: 40rpx;
+    height: 40rpx;
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24rpx;
+    font-weight: 600;
+    color: #fff;
+  }
+}
 
 /* 已购买提示 */
 .purchased-hint {
@@ -860,6 +1127,13 @@ $bg-card: #FFFFFF;
     background: $secondary;
     color: #fff;
     box-shadow: 0 8rpx 32rpx rgba(16, 185, 129, 0.35);
+  }
+
+  &--info {
+    flex: 1;
+    background: #94A3B8;
+    color: #fff;
+    box-shadow: 0 8rpx 32rpx rgba(148, 163, 184, 0.35);
   }
 
   &__icon { font-size: 32rpx; }

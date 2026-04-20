@@ -82,18 +82,6 @@
         </view>
         <text class="quick-action__text">去商城</text>
       </view>
-      <view class="quick-action" @tap="goOrders">
-        <view class="quick-action__icon quick-action__icon--green">
-          <text class="icon-text">📋</text>
-        </view>
-        <text class="quick-action__text">我的订单</text>
-      </view>
-      <view class="quick-action" @tap="goCart">
-        <view class="quick-action__icon quick-action__icon--teal">
-          <text class="icon-text">🛒</text>
-        </view>
-        <text class="quick-action__text">购物车</text>
-      </view>
       <view class="quick-action" @tap="goMe">
         <view class="quick-action__icon quick-action__icon--purple">
           <text class="icon-text">👤</text>
@@ -104,29 +92,17 @@
 
     <!-- 底部安全区 -->
     <view class="bottom-safe" />
-
-    <!-- 购物车悬浮按钮 -->
-    <view class="cart-float" :class="{ 'cart-float--bump': cartBump }" @tap="goCart">
-      <view class="cart-float__icon">
-        <text class="icon-text">🛒</text>
-      </view>
-      <view class="cart-float__badge" v-if="cartCount > 0">{{ cartCount > 99 ? '99+' : cartCount }}</view>
-    </view>
   </view>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
 import { getExternalCourses } from '@/utils/external-course.js'
 import { getCourses, checkInternalCoursePurchased } from '@/utils/course.js'
-import { getCart } from '@/utils/cart.js'
 import { getCurrentUser } from '@/utils/user.js'
 
 const statusBarHeight = ref(0)
 const navHeight = ref(88)
-const cartCount = ref(0)
-const cartBump = ref(false)
 
 // 已购买的内部课程列表
 const purchasedInternalCourses = ref([])
@@ -291,29 +267,9 @@ const goMall = () => {
   uni.switchTab({ url: '/pages/mall/mall' })
 }
 
-// 跳转到订单页
-const goOrders = () => {
-  uni.navigateTo({ url: '/pages/order/orders' })
-}
-
-// 跳转到购物车
-const goCart = () => {
-  uni.switchTab({ url: '/pages/mall/mall' })
-}
-
 // 跳转到个人中心
 const goMe = () => {
   uni.switchTab({ url: '/pages/me/me' })
-}
-
-// 加载购物车数量
-const loadCartCount = async () => {
-  try {
-    const res = await getCart()
-    cartCount.value = res.totalCount || 0
-  } catch (e) {
-    console.error('加载购物车失败:', e)
-  }
 }
 
 // 加载外部课程
@@ -370,11 +326,6 @@ onMounted(() => {
   const sys = uni.getSystemInfoSync()
   statusBarHeight.value = sys.statusBarHeight || 0
   loadCourses()
-  loadCartCount()
-})
-
-onShow(() => {
-  loadCartCount()
 })
 </script>
 
@@ -670,16 +621,6 @@ $border-color: #F0E6DC;
     }
   }
 
-  &__icon--green {
-    background: linear-gradient(135deg, #2ECC71, #27ae60);
-    box-shadow: 0 4rpx 16rpx rgba(46, 204, 113, 0.25);
-  }
-
-  &__icon--teal {
-    background: linear-gradient(135deg, $secondary, #36CFC9);
-    box-shadow: 0 4rpx 16rpx rgba(78, 205, 196, 0.25);
-  }
-
   &__icon--purple {
     background: linear-gradient(135deg, #A855F7, #9333EA);
     box-shadow: 0 4rpx 16rpx rgba(168, 85, 247, 0.25);
@@ -700,62 +641,5 @@ $border-color: #F0E6DC;
 /* 底部安全区 */
 .bottom-safe {
   height: calc(env(safe-area-inset-bottom) + 120rpx);
-}
-
-/* 购物车悬浮按钮 */
-.cart-float {
-  position: fixed;
-  right: 32rpx;
-  bottom: 200rpx;
-  width: 96rpx;
-  height: 96rpx;
-  background: $orange-gradient;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 8rpx 32rpx rgba(255, 107, 53, 0.4);
-  z-index: 90;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-
-  &--bump {
-    animation: bump 0.3s ease-out;
-  }
-
-  &:active {
-    transform: scale(0.9);
-  }
-
-  .icon-text {
-    font-size: 44rpx;
-  }
-}
-
-.cart-float__icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.cart-float__badge {
-  position: absolute;
-  top: -8rpx;
-  right: -8rpx;
-  min-width: 40rpx;
-  height: 40rpx;
-  padding: 0 10rpx;
-  background: linear-gradient(135deg, #ff4757, #ff6b81);
-  border-radius: 20rpx;
-  font-size: 24rpx;
-  font-weight: 700;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-@keyframes bump {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.15); }
 }
 </style>

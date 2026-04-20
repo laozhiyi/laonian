@@ -18,40 +18,55 @@
       </view>
     </view>
 
-    <!-- 分类标签和内容区域 -->
-    <view class="content-wrapper" :style="{ paddingTop: (statusBarHeight + navHeight) + 'px' }">
-      <!-- 分类标签 -->
-      <view class="category-tabs">
-      <view
-        class="category-tab"
-        :class="{ 'category-tab--active': selectedCategory === '' }"
-        @tap="selectCategory('')"
-      >
-        <text>全部</text>
+    <!-- 分类和课程内容区域 -->
+    <scroll-view class="scroll-area" scroll-y @scrolltolower="onScrollToLower">
+      <!-- 分类图标网格 -->
+      <view class="category-grid-wrapper">
+        <view class="category-grid">
+          <view
+            class="category-icon-item"
+            :class="{ 'category-icon-item--active': selectedCategory === '' }"
+            @tap="selectCategory('')"
+          >
+            <view class="category-icon-item__circle category-icon-item__circle--all-category">
+              <text class="category-icon-item__icon">🌐</text>
+            </view>
+            <text class="category-icon-item__name">全部</text>
+          </view>
+          <view
+            class="category-icon-item"
+            :class="{ 'category-icon-item--active': selectedCategory === cat.name }"
+            v-for="cat in displayCategories"
+            :key="cat.id"
+            @tap="selectCategory(cat.name)"
+          >
+            <view class="category-icon-item__circle" :style="{ background: 'linear-gradient(135deg, ' + cat.color + ' 0%, ' + adjustColor(cat.color, 20) + ' 100%)', borderColor: cat.color + '60' }">
+              <text class="category-icon-item__icon">{{ cat.icon }}</text>
+            </view>
+            <text class="category-icon-item__name">{{ cat.name }}</text>
+          </view>
+          <view
+            class="category-icon-item"
+            :class="{ 'category-icon-item--active': selectedCategory === '其他' }"
+            @tap="selectCategory('其他')"
+          >
+            <view class="category-icon-item__circle category-icon-item__circle--other">
+              <text class="category-icon-item__icon">📂</text>
+            </view>
+            <text class="category-icon-item__name">其他</text>
+          </view>
+          <view
+            class="category-icon-item"
+            @tap="goAllCourses"
+          >
+            <view class="category-icon-item__circle category-icon-item__circle--all-course">
+              <text class="category-icon-item__icon">📋</text>
+            </view>
+            <text class="category-icon-item__name">全部课程</text>
+          </view>
+        </view>
       </view>
-      <view
-        class="category-tab"
-        :class="{ 'category-tab--active': selectedCategory === cat.name }"
-        v-for="cat in displayCategories"
-        :key="cat.id"
-        @tap="selectCategory(cat.name)"
-      >
-        <text>{{ cat.icon }} {{ cat.name }}</text>
-      </view>
-      <view
-        class="category-tab"
-        :class="{ 'category-tab--active': selectedCategory === '其他' }"
-        @tap="selectCategory('其他')"
-      >
-        <text>📂 其他</text>
-      </view>
-      <!-- 全部课程按钮 -->
-      <view class="category-tab category-tab--all" @tap="goAllCourses">
-        <text>📋 全部课程</text>
-      </view>
-    </view>
 
-    <scroll-view class="scroll" scroll-y @scrolltolower="onScrollToLower">
       <!-- 筛选状态提示 -->
       <view class="filter-status" v-if="searchKeyword || selectedCategory">
         <view class="filter-status__info">
@@ -84,12 +99,6 @@
               <image class="featured-card__img" :src="course.cover || getCategoryCover(course.category)" mode="aspectFill" />
               <view class="featured-card__badge">
                 <text>{{ course._isExternal ? '外部' : '精选' }}</text>
-              </view>
-              <view class="featured-card__purchased-tag" v-if="isCoursePurchased(course.id)">
-                <text>已购</text>
-              </view>
-              <view class="favorite-btn favorite-btn--featured" @tap.stop="toggleFavorite(course, course._isExternal)">
-                <text>{{ isFavorited(course.id, course._isExternal) ? '❤️' : '🤍' }}</text>
               </view>
             </view>
             <view class="featured-card__info">
@@ -124,12 +133,6 @@
           >
             <view class="hot-item__cover">
               <image class="hot-item__img" :src="course.cover || getCategoryCover(course.category)" mode="aspectFill" />
-              <view class="hot-item__purchased-tag" v-if="isCoursePurchased(course.id)">
-                <text>已购</text>
-              </view>
-              <view class="favorite-btn favorite-btn--hot" @tap.stop="toggleFavorite(course, false)">
-                <text>{{ isFavorited(course.id, false) ? '❤️' : '🤍' }}</text>
-              </view>
             </view>
             <view class="hot-item__info">
               <text class="hot-item__title">{{ course.title }}</text>
@@ -174,7 +177,6 @@
 
       <view class="bottom-spacer" />
     </scroll-view>
-    </view>
 
     <!-- 搜索弹窗 -->
     <view class="search-popup" v-if="showSearchPopup">
@@ -255,6 +257,41 @@
         </scroll-view>
       </view>
     </view>
+
+    <!-- 购买确认弹窗 -->
+    <view class="buy-modal" v-if="showBuyModal" @tap="closeBuyConfirm">
+      <view class="buy-modal__content" @tap.stop>
+        <view class="buy-modal__header">
+          <text class="buy-modal__title">确认购买</text>
+          <text class="buy-modal__close" @tap="closeBuyConfirm">✕</text>
+        </view>
+        <view class="buy-modal__body" v-if="buyConfirmCourse">
+          <view class="buy-modal__course">
+            <image class="buy-modal__cover" :src="buyConfirmCourse.cover || getCategoryCover(buyConfirmCourse.category)" mode="aspectFill" />
+            <view class="buy-modal__info">
+              <text class="buy-modal__name">{{ buyConfirmCourse.title }}</text>
+              <text class="buy-modal__category">{{ buyConfirmCourse.category }}</text>
+            </view>
+          </view>
+          <view class="buy-modal__price-row">
+            <text class="buy-modal__price-label">支付金额</text>
+            <text class="buy-modal__price">¥{{ Number(buyConfirmCourse.price).toFixed(2) }}</text>
+          </view>
+          <view class="buy-modal__notice">
+            <text class="buy-modal__notice-icon">💡</text>
+            <text class="buy-modal__notice-text">购买后即可学习全部课程内容</text>
+          </view>
+        </view>
+        <view class="buy-modal__actions">
+          <view class="buy-modal__btn buy-modal__btn--cancel" @tap="closeBuyConfirm">
+            <text>取消</text>
+          </view>
+          <view class="buy-modal__btn buy-modal__btn--confirm" @tap="confirmBuy">
+            <text>确认购买</text>
+          </view>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -273,6 +310,10 @@ const navHeight = ref(88)
 
 // ========== 已购买的课程ID集合 ==========
 const purchasedCourseIds = ref(new Set())
+
+// ========== 购买确认弹窗 ==========
+const showBuyModal = ref(false)
+const buyConfirmCourse = ref(null)
 
 // ========== 外部课程数据 ==========
 const externalCourses = ref([])
@@ -353,59 +394,76 @@ const hotExternalCourses = ref([])
 
 // ========== 分类数据 ==========
 const categories = ref([
-  { id: 1, name: '公民素养', icon: '🏛️', color: '#4A90D9' },
-  { id: 2, name: '时代前沿', icon: '🚀', color: '#7B68EE' },
-  { id: 3, name: '时事思政', icon: '📰', color: '#DC143C' },
-  { id: 4, name: '隔代教育', icon: '👨‍👩‍👧', color: '#FF69B4' },
-  { id: 5, name: '哲学', icon: '🧠', color: '#4169E1' },
-  { id: 6, name: '文学', icon: '📚', color: '#8B4513' },
-  { id: 7, name: '数字素养', icon: '💻', color: '#2E8B57' },
-  { id: 8, name: '摄影', icon: '📷', color: '#FF6347' },
-  { id: 9, name: '表演', icon: '🎭', color: '#9370DB' },
-  { id: 10, name: '社会科学', icon: '🔬', color: '#20B2AA' },
-  { id: 11, name: '自然科学', icon: '🌍', color: '#3CB371' },
-  { id: 12, name: '农学', icon: '🌾', color: '#DAA520' },
-  { id: 13, name: '语言', icon: '🗣️', color: '#FF8C00' },
-  { id: 14, name: '数学', icon: '📐', color: '#4682B4' },
-  { id: 15, name: '学历教育', icon: '🎓', color: '#8B0000' },
-  { id: 16, name: '论文写作', icon: '✍️', color: '#556B2F' },
-  { id: 17, name: '医学', icon: '🏥', color: '#B22222' },
-  { id: 18, name: '家庭照护', icon: '🏠', color: '#FF7F50' },
-  { id: 19, name: '中医保健', icon: '🌿', color: '#228B22' },
-  { id: 20, name: '用药安全', icon: '💊', color: '#CD5C5C' },
-  { id: 21, name: '食品营养', icon: '🍎', color: '#32CD32' },
-  { id: 22, name: '心理健康', icon: '💚', color: '#6B8E23' },
-  { id: 23, name: '运动健康', icon: '🏃', color: '#FF4500' },
-  { id: 24, name: '慢病管理', icon: '🩺', color: '#8FBC8F' },
-  { id: 25, name: '口腔健康', icon: '🦷', color: '#87CEEB' },
-  { id: 26, name: '生命教育', icon: '🌱', color: '#98FB98' },
-  { id: 27, name: '老年痴呆防治', icon: '🧩', color: '#D8BFD8' },
-  { id: 28, name: '舞蹈', icon: '💃', color: '#FF1493' },
-  { id: 29, name: '声乐', icon: '🎤', color: '#FFD700' },
-  { id: 30, name: '器乐', icon: '🎸', color: '#C0C0C0' },
-  { id: 31, name: '书法', icon: '🖌️', color: '#8B4513' },
-  { id: 32, name: '绘画', icon: '🎨', color: '#FF69B4' },
-  { id: 33, name: '模特', icon: '👗', color: '#DDA0DD' },
-  { id: 34, name: '戏剧', icon: '🎬', color: '#FFA07A' },
-  { id: 35, name: '手工', icon: '🧶', color: '#F0E68C' },
-  { id: 36, name: '生活休闲', icon: '☕', color: '#DEB887' },
-  { id: 37, name: '历史地理', icon: '🗺️', color: '#778899' },
-  { id: 38, name: '文化', icon: '🏺', color: '#D2691E' },
-  { id: 39, name: '退休生涯规划', icon: '🌅', color: '#FF8C00' },
-  { id: 40, name: '投资理财', icon: '💰', color: '#FFD700' },
-  { id: 41, name: '志愿服务', icon: '❤️', color: '#FF6B6B' },
-  { id: 42, name: '创新创业', icon: '💡', color: '#9ACD32' },
-  { id: 43, name: '农业养殖', icon: '🐄', color: '#8FBC8F' },
-  { id: 44, name: '职业技能', icon: '💼', color: '#6495ED' },
+  { id: 1, name: '书法绘画', icon: '🖌️', color: '#FF6B35' },
+  { id: 2, name: '音乐类', icon: '🎵', color: '#4ECDC4' },
+  { id: 3, name: '文史语言', icon: '📖', color: '#A855F7' },
+  { id: 4, name: '科普综合', icon: '🔬', color: '#3B82F6' },
+  { id: 5, name: '体育舞蹈', icon: '💃', color: '#10B981' },
+  { id: 6, name: '民俗文化', icon: '🏺', color: '#F59E0B' },
+  { id: 7, name: '养生健康', icon: '🌿', color: '#EF4444' },
+  { id: 8, name: '公民素养', icon: '🏛️', color: '#4A90D9' },
+  { id: 9, name: '时代前沿', icon: '🚀', color: '#7B68EE' },
+  { id: 10, name: '时事思政', icon: '📰', color: '#DC143C' },
+  { id: 11, name: '隔代教育', icon: '👨‍👩‍👧', color: '#FF69B4' },
+  { id: 12, name: '哲学', icon: '🧠', color: '#4169E1' },
+  { id: 13, name: '文学', icon: '📚', color: '#8B4513' },
+  { id: 14, name: '数字素养', icon: '💻', color: '#2E8B57' },
+  { id: 15, name: '摄影', icon: '📷', color: '#FF6347' },
+  { id: 16, name: '表演', icon: '🎭', color: '#9370DB' },
+  { id: 17, name: '社会科学', icon: '🔬', color: '#20B2AA' },
+  { id: 18, name: '自然科学', icon: '🌍', color: '#3CB371' },
+  { id: 19, name: '农学', icon: '🌾', color: '#DAA520' },
+  { id: 20, name: '语言', icon: '🗣️', color: '#FF8C00' },
+  { id: 21, name: '数学', icon: '📐', color: '#4682B4' },
+  { id: 22, name: '学历教育', icon: '🎓', color: '#8B0000' },
+  { id: 23, name: '论文写作', icon: '✍️', color: '#556B2F' },
+  { id: 24, name: '医学', icon: '🏥', color: '#B22222' },
+  { id: 25, name: '家庭照护', icon: '🏠', color: '#FF7F50' },
+  { id: 26, name: '中医保健', icon: '🌿', color: '#228B22' },
+  { id: 27, name: '用药安全', icon: '💊', color: '#CD5C5C' },
+  { id: 28, name: '食品营养', icon: '🍎', color: '#32CD32' },
+  { id: 29, name: '心理健康', icon: '💚', color: '#6B8E23' },
+  { id: 30, name: '运动健康', icon: '🏃', color: '#FF4500' },
+  { id: 31, name: '慢病管理', icon: '🩺', color: '#8FBC8F' },
+  { id: 32, name: '口腔健康', icon: '🦷', color: '#87CEEB' },
+  { id: 33, name: '生命教育', icon: '🌱', color: '#98FB98' },
+  { id: 34, name: '老年痴呆防治', icon: '🧩', color: '#D8BFD8' },
+  { id: 35, name: '舞蹈', icon: '💃', color: '#FF1493' },
+  { id: 36, name: '声乐', icon: '🎤', color: '#FFD700' },
+  { id: 37, name: '器乐', icon: '🎸', color: '#C0C0C0' },
+  { id: 38, name: '书法', icon: '🖌️', color: '#8B4513' },
+  { id: 39, name: '绘画', icon: '🎨', color: '#FF69B4' },
+  { id: 40, name: '模特', icon: '👗', color: '#DDA0DD' },
+  { id: 41, name: '戏剧', icon: '🎬', color: '#FFA07A' },
+  { id: 42, name: '手工', icon: '🧶', color: '#F0E68C' },
+  { id: 43, name: '生活休闲', icon: '☕', color: '#DEB887' },
+  { id: 44, name: '历史地理', icon: '🗺️', color: '#778899' },
+  { id: 45, name: '文化', icon: '🏺', color: '#D2691E' },
+  { id: 46, name: '退休生涯规划', icon: '🌅', color: '#FF8C00' },
+  { id: 47, name: '投资理财', icon: '💰', color: '#FFD700' },
+  { id: 48, name: '志愿服务', icon: '❤️', color: '#FF6B6B' },
+  { id: 49, name: '创新创业', icon: '💡', color: '#9ACD32' },
+  { id: 50, name: '农业养殖', icon: '🐄', color: '#8FBC8F' },
+  { id: 51, name: '职业技能', icon: '💼', color: '#6495ED' },
 ])
 
-// 6个主要分类
-const mainCategoryNames = ['公民素养', '时代前沿', '时事思政', '隔代教育', '哲学', '文学']
+// 7个主要分类
+const mainCategoryNames = ['书法绘画', '音乐类', '文史语言', '科普综合', '体育舞蹈', '民俗文化', '养生健康']
 
 // 显示的分类（只显示前6个）
 const displayCategories = computed(() => {
   return categories.value.filter(cat => mainCategoryNames.includes(cat.name))
 })
+
+// 调整颜色亮度
+const adjustColor = (color, percent) => {
+  const num = parseInt(color.replace('#', ''), 16)
+  const amt = Math.round(2.55 * percent)
+  const R = (num >> 16) + amt
+  const G = (num >> 8 & 0x00FF) + amt
+  const B = (num & 0x0000FF) + amt
+  return '#' + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 + (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 + (B < 255 ? B < 1 ? 0 : B : 255)).toString(16).slice(1)
+}
 
 const selectedCategory = ref('')
 
@@ -678,21 +736,12 @@ const loadCourses = async (forceRefresh = false) => {
 const checkPurchasedCourses = async () => {
   const userId = getCurrentUser()?.id
   if (!userId) return
-  
+
   try {
-    const { checkInternalCoursePurchased } = await import('@/utils/course.js')
-    const purchased = new Set()
-    for (const course of courseList.value) {
-      try {
-        const res = await checkInternalCoursePurchased(course.id)
-        if (res.ok && res.purchased) {
-          purchased.add(course.id)
-        }
-      } catch (e) {
-        console.error('检查购买状态失败:', e)
-      }
+    const res = await request.get('/api/course-orders/purchased-ids')
+    if (res.ok && res.purchased_ids) {
+      purchasedCourseIds.value = new Set(res.purchased_ids)
     }
-    purchasedCourseIds.value = purchased
   } catch (e) {
     console.error('检查已购买课程失败:', e)
   }
@@ -750,14 +799,6 @@ const toggleFavorite = async (course, isExternal = false) => {
 }
 
 // ========== 交互方法 ==========
-const goDetail = (course) => {
-  if (course._isExternal) {
-    uni.navigateTo({ url: `/pages/external-course/detail?id=${course.id}` })
-    return
-  }
-  uni.navigateTo({ url: `/pages/product/detail?id=${course.id}` })
-}
-
 // 处理购买/查看按钮点击
 const handleBuy = (course) => {
   // 免费课程直接跳转
@@ -765,8 +806,95 @@ const handleBuy = (course) => {
     goDetail(course)
     return
   }
-  // 付费课程跳转到详情页
-  goDetail(course)
+
+  // 已购买课程直接跳转
+  if (isCoursePurchased(course.id)) {
+    goDetail(course)
+    return
+  }
+
+  // 未购买课程，显示购买确认弹窗
+  showBuyConfirm(course)
+}
+
+// 显示购买确认弹窗
+const showBuyConfirm = (course) => {
+  buyConfirmCourse.value = course
+  showBuyModal.value = true
+}
+
+// 关闭购买确认弹窗
+const closeBuyConfirm = () => {
+  showBuyModal.value = false
+  buyConfirmCourse.value = null
+}
+
+// 确认购买（调用后端API）
+const confirmBuy = async () => {
+  const course = buyConfirmCourse.value
+  if (!course) return
+
+  const userId = getCurrentUser()?.id
+  if (!userId) {
+    uni.showToast({ title: '请先登录', icon: 'none' })
+    setTimeout(() => uni.navigateTo({ url: '/pages/auth/login' }), 1000)
+    return
+  }
+
+  try {
+    uni.showLoading({ title: '购买中...' })
+
+    // 调用后端API
+    let res
+    if (course._isExternal) {
+      res = await request.post('/api/course-orders/simulate', { course_id: course.id })
+    } else {
+      res = await request.post('/api/course-orders/simulate-internal', { course_id: course.id })
+    }
+
+    uni.hideLoading()
+
+    if (res.ok) {
+      // 添加到已购买列表
+      purchasedCourseIds.value.add(course.id)
+      uni.showToast({ title: '购买成功', icon: 'success' })
+      // 关闭弹窗并跳转详情
+      closeBuyConfirm()
+      goDetail(course)
+    } else {
+      uni.showToast({ title: res.detail || '购买失败', icon: 'none' })
+    }
+  } catch (e) {
+    uni.hideLoading()
+    console.error('购买失败:', e)
+    uni.showToast({ title: '购买失败', icon: 'none' })
+  }
+}
+
+// 进入课程详情（检查购买状态）
+const goDetail = (course) => {
+  // 免费课程直接跳转
+  if (course.price <= 0) {
+    if (course._isExternal) {
+      uni.navigateTo({ url: `/pages/external-course/detail?id=${course.id}` })
+    } else {
+      uni.navigateTo({ url: `/pages/product/detail?id=${course.id}` })
+    }
+    return
+  }
+
+  // 已购买课程直接跳转
+  if (isCoursePurchased(course.id)) {
+    if (course._isExternal) {
+      uni.navigateTo({ url: `/pages/external-course/detail?id=${course.id}` })
+    } else {
+      uni.navigateTo({ url: `/pages/product/detail?id=${course.id}` })
+    }
+    return
+  }
+
+  // 未购买课程，显示购买确认
+  showBuyConfirm(course)
 }
 
 // 跳转到全部课程页面
@@ -849,19 +977,66 @@ const loadExternalHotCourses = async () => {
 </script>
 
 <style lang="scss" scoped>
-// ========== 设计规范 - 专业课程平台风格 ==========
-$primary: #2563EB;
-$primary-light: #3B82F6;
-$primary-dark: #1D4ED8;
-$secondary: #10B981;
-$accent: #F59E0B;
-$orange-gradient: linear-gradient(135deg, $primary 0%, $primary-light 50%, #60A5FA 100%);
-$gold-gradient: linear-gradient(135deg, $accent 0%, #FBBF24 100%);
-$text-primary: #0F172A;
-$text-secondary: #334155;
-$text-muted: #94A3B8;
-$bg-light: #F8FAFC;
-$bg-card: #FFFFFF;
+// ========== 新中式水墨风格设计规范 ==========
+// 色彩系统 - 融合传统水墨与现代简约
+$primary: #4A6FA5;           // 藏蓝色 - 书法绘画
+$primary-light: #6B8BB8;    // 浅藏蓝
+$secondary: #7BA05B;         // 松石绿 - 音乐类
+$accent: #D4915C;            // 赭石色 - 文史语言
+$accent-warm: #C4785C;       // 暖赭色
+$text-primary: #2C3E50;      // 墨色
+$text-secondary: #5D6D7E;    // 淡墨色
+$text-muted: #95A5A6;        // 浅墨色
+$bg-light: #FAF8F5;          // 宣纸白
+$bg-card: #FFFFFF;          // 卡片白
+$ink-red: #C94043;          // 梅花红
+$ink-brown: #8B7355;         // 棕褐色
+$vivid-red: #E53E3E;         // 鲜艳的红色
+
+// 水墨渐变色
+$ink-gradient: linear-gradient(180deg, #E8E4DD 0%, #FAF8F5 100%);
+$mist-gradient: linear-gradient(180deg, rgba(139, 115, 85, 0.05) 0%, rgba(139, 115, 85, 0.02) 100%);
+
+@mixin ink-border {
+  border: 1px solid rgba(139, 115, 85, 0.15);
+  box-shadow: 0 4rpx 20rpx rgba(139, 115, 85, 0.08);
+}
+
+@mixin plum-blossom-decoration {
+  position: relative;
+  &::before {
+    content: '❀';
+    position: absolute;
+    top: -10rpx;
+    right: -10rpx;
+    font-size: 24rpx;
+    color: $ink-red;
+    opacity: 0.6;
+  }
+}
+
+@mixin ink-brush-stroke {
+  border-left: 4rpx solid $primary;
+}
+
+@mixin mountain-decoration {
+  position: relative;
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 60%;
+    height: 60rpx;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60"><path fill="%234A6FA5" opacity="0.08" d="M0,60 L0,40 Q50,20 100,35 Q150,50 200,25 L200,60 Z"/></svg>') no-repeat right bottom;
+    background-size: contain;
+    pointer-events: none;
+  }
+}
+
+@mixin mist-animation {
+  animation: mist-float 6s ease-in-out infinite;
+}
 
 @keyframes slideUpFade {
   from { opacity: 0; transform: translateY(20rpx); }
@@ -878,13 +1053,29 @@ $bg-card: #FFFFFF;
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes mist-float {
+  0%, 100% { opacity: 0.3; transform: translateX(0); }
+  50% { opacity: 0.5; transform: translateX(10rpx); }
+}
+
 .page {
   min-height: 100vh;
   background: $bg-light;
   position: relative;
 }
 
-/* ========== 导航栏 ========== */
+.page::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: $bg-light;
+  z-index: -1;
+}
+
+/* ========== 导航栏 - 水墨风格 ========== */
 .nav-bar {
   position: fixed;
   top: 0;
@@ -892,7 +1083,11 @@ $bg-card: #FFFFFF;
   right: 0;
   background: $bg-card;
   z-index: 100;
-  border-bottom: 1rpx solid #E2E8F0;
+  @include ink-border;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  border-bottom: 1px solid rgba(139, 115, 85, 0.1);
 }
 
 .nav-content {
@@ -912,11 +1107,13 @@ $bg-card: #FFFFFF;
 .brand-icon {
   width: 56rpx;
   height: 56rpx;
-  background: $primary;
-  border-radius: 14rpx;
+  background: $bg-card;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  @include ink-border;
+  @include plum-blossom-decoration;
 
   .icon-text {
     font-size: 28rpx;
@@ -927,18 +1124,24 @@ $bg-card: #FFFFFF;
   font-size: 32rpx;
   font-weight: 700;
   color: $text-primary;
-  letter-spacing: 1rpx;
+  letter-spacing: 4rpx;
+  font-family: 'STKaiti', 'KaiTi', serif;
 }
 
 .nav-search {
   flex: 1;
   height: 72rpx;
-  background: #F1F5F9;
+  background: $mist-gradient;
+  border: 1px solid rgba(139, 115, 85, 0.1);
   border-radius: 36rpx;
   display: flex;
   align-items: center;
   padding: 0 28rpx;
   gap: 12rpx;
+  
+  &:active {
+    border-color: $primary;
+  }
 }
 
 .search-icon {
@@ -948,78 +1151,128 @@ $bg-card: #FFFFFF;
 .search-text {
   font-size: 26rpx;
   color: $text-muted;
+  letter-spacing: 1rpx;
 }
 
-/* ========== 内容区域 ========== */
-.content-wrapper {
+/* ========== 滚动区域 ========== */
+.scroll-area {
   position: fixed;
-  top: 0;
+  top: calc(var(--status-bar-height, 0) + 88rpx);
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 98;
-  overflow-y: auto;
-  background: $bg-light;
+  padding: 0 24rpx 24rpx;
+  box-sizing: border-box;
 }
 
-/* ========== 分类标签 ========== */
-.category-tabs {
+/* ========== 分类图标网格 - 圆形图标风格 ========== */
+.category-grid-wrapper {
+  background: $bg-card;
+  @include ink-border;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  margin: 24rpx;
+  border-radius: 16rpx;
+}
+
+.category-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 16rpx;
-  margin-bottom: 28rpx;
-  padding-top: 35rpx;
-  animation: slideUpFade 0.4s ease-out;
+  padding: 16rpx;
+  gap: 8rpx 0;
 }
 
-.category-tab {
-  padding: 12rpx 24rpx;
-  background: #fff;
-  border: 1rpx solid #E2E8F0;
-  border-radius: 32rpx;
-  font-size: 26rpx;
-  color: #334155;
-  transition: all 0.3s;
+.category-icon-item {
+  width: 25%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12rpx;
+  padding: 12rpx 0;
 
-  &:active {
-    transform: scale(0.95);
+  &__circle {
+    width: 96rpx;
+    height: 96rpx;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    border-width: 3rpx;
+    border-style: solid;
+
+    // 全部 - 藏蓝色
+    &--all-category {
+      background: linear-gradient(135deg, #4A90D9 0%, #6B8BB8 100%);
+      border-color: rgba(74, 144, 217, 0.4);
+    }
+
+    // 其他 - 灰棕色
+    &--other {
+      background: linear-gradient(135deg, #8B7355 0%, #A08060 100%);
+      border-color: rgba(139, 115, 85, 0.4);
+    }
+
+    // 全部课程 - 松石绿
+    &--all-course {
+      background: linear-gradient(135deg, #7BA05B 0%, #8FB86B 100%);
+      border-color: rgba(123, 160, 91, 0.4);
+    }
+  }
+
+  &__icon {
+    font-size: 44rpx;
+    filter: drop-shadow(0 2rpx 4rpx rgba(0,0,0,0.15));
+  }
+
+  &__name {
+    font-size: 22rpx;
+    color: $text-primary;
+    text-align: center;
+    max-width: 120rpx;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   &--active {
-    background: linear-gradient(135deg, $primary, $primary-light);
-    color: #fff;
-    border-color: transparent;
-    font-weight: 600;
+    .category-icon-item__circle {
+      transform: scale(1.1);
+      box-shadow: 0 6rpx 20rpx rgba(74, 111, 165, 0.25);
+    }
+
+    .category-icon-item__name {
+      color: $primary;
+      font-weight: 600;
+    }
   }
 
-  &--all {
-    background: linear-gradient(135deg, $secondary, #36CFC9);
-    color: #fff;
-    border-color: transparent;
-    font-weight: 600;
-
-    &:active {
-      opacity: 0.85;
+  &:active {
+    .category-icon-item__circle {
+      transform: scale(0.95);
     }
   }
 }
 
-/* ========== 滚动区域 ========== */
-.scroll {
+/* ========== 内容区域 ========== */
+.content-wrapper {
   padding: 24rpx;
 }
 
-/* ========== 筛选状态提示 ========== */
+/* ========== 筛选状态提示 - 水墨风格 ========== */
 .filter-status {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 20rpx 24rpx;
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(59, 130, 246, 0.05));
-  border: 1rpx solid rgba(37, 99, 235, 0.15);
+  background: $bg-card;
+  border: 1px solid rgba(139, 115, 85, 0.15);
   border-radius: 16rpx;
   margin-bottom: 24rpx;
   animation: slideUpFade 0.3s ease-out;
+  @include ink-border;
+  @include ink-brush-stroke;
 
   &__info {
     display: flex;
@@ -1035,23 +1288,25 @@ $bg-card: #FFFFFF;
     font-size: 26rpx;
     color: $primary;
     font-weight: 500;
+    letter-spacing: 1rpx;
   }
 
   &__clear {
     padding: 10rpx 20rpx;
-    background: $primary;
+    background: $bg-card;
+    border: 1px solid $primary;
     border-radius: 20rpx;
     font-size: 24rpx;
-    color: #fff;
+    color: $primary;
     font-weight: 500;
 
     &:active {
-      opacity: 0.8;
+      background: $mist-gradient;
     }
   }
 }
 
-/* ========== 精选课程区块 ========== */
+/* ========== 精选课程区块 - 水墨卡片 ========== */
 .featured-section {
   padding: 24rpx 24rpx 0;
 }
@@ -1070,6 +1325,8 @@ $bg-card: #FFFFFF;
   font-size: 36rpx;
   font-weight: 700;
   color: $text-primary;
+  letter-spacing: 4rpx;
+  font-family: 'STKaiti', 'KaiTi', serif;
 }
 
 .featured-subtitle {
@@ -1085,9 +1342,24 @@ $bg-card: #FFFFFF;
 
 .featured-card {
   background: $bg-card;
-  border-radius: 20rpx;
+  border-radius: 16rpx;
   overflow: hidden;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+  @include ink-border;
+  @include mountain-decoration;
+  position: relative;
+
+  // 水墨顶部装饰条
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4rpx;
+    background: linear-gradient(90deg, $primary, $secondary, $accent);
+    opacity: 0.6;
+    z-index: 1;
+  }
 
   &:active {
     transform: scale(0.98);
@@ -1111,51 +1383,13 @@ $bg-card: #FFFFFF;
   top: 12rpx;
   left: 12rpx;
   padding: 6rpx 14rpx;
-  background: $accent;
+  background: $bg-card;
+  border: 1px solid rgba(139, 115, 85, 0.2);
   border-radius: 8rpx;
   font-size: 20rpx;
   font-weight: 600;
-  color: #fff;
-}
-
-.featured-card__purchased-tag {
-  position: absolute;
-  top: 12rpx;
-  right: 12rpx;
-  padding: 6rpx 14rpx;
-  background: #10B981;
-  border-radius: 8rpx;
-  font-size: 20rpx;
-  font-weight: 600;
-  color: #fff;
-}
-
-.favorite-btn {
-  position: absolute;
-  width: 64rpx;
-  height: 64rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 50%;
-  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.15);
-  font-size: 32rpx;
-  z-index: 10;
-
-  &--featured {
-    bottom: 16rpx;
-    right: 16rpx;
-  }
-
-  &--hot {
-    bottom: 80rpx;
-    right: 16rpx;
-  }
-
-  &:active {
-    transform: scale(0.9);
-  }
+  color: $primary;
+  @include ink-border;
 }
 
 .featured-card__info {
@@ -1165,12 +1399,13 @@ $bg-card: #FFFFFF;
 .featured-card__title {
   font-size: 28rpx;
   font-weight: 600;
-  color: $text-primary;
+  color: $vivid-red;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   margin-bottom: 8rpx;
+  letter-spacing: 1rpx;
 }
 
 .featured-card__category {
@@ -1188,7 +1423,7 @@ $bg-card: #FFFFFF;
 .featured-card__price {
   font-size: 32rpx;
   font-weight: 700;
-  color: $primary;
+  color: $accent-warm;
 }
 
 .featured-card__price--free {
@@ -1198,29 +1433,32 @@ $bg-card: #FFFFFF;
 
 .featured-card__action {
   padding: 10rpx 24rpx;
-  background: $primary;
+  background: $bg-card;
+  border: 1px solid $primary;
   border-radius: 20rpx;
   font-size: 22rpx;
   font-weight: 600;
+  color: $primary;
 
   text {
-    color: #fff;
+    color: $primary;
   }
 
   &:active {
-    background: $primary-dark;
+    background: $mist-gradient;
   }
 }
 
 .featured-card__action--view {
-  background: $secondary;
+  border-color: $secondary;
+  color: $secondary;
 
-  &:active {
-    background: darken($secondary, 10%);
+  text {
+    color: $secondary;
   }
 }
 
-/* ========== 热门课程区块 ========== */
+/* ========== 热门课程区块 - 水墨风格 ========== */
 .hot-section {
   padding: 32rpx 24rpx 0;
 }
@@ -1239,6 +1477,8 @@ $bg-card: #FFFFFF;
   font-size: 36rpx;
   font-weight: 700;
   color: $text-primary;
+  letter-spacing: 4rpx;
+  font-family: 'STKaiti', 'KaiTi', serif;
 }
 
 .hot-subtitle {
@@ -1254,9 +1494,22 @@ $bg-card: #FFFFFF;
 
 .hot-item {
   background: $bg-card;
-  border-radius: 20rpx;
+  border-radius: 16rpx;
   overflow: hidden;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+  @include ink-border;
+  position: relative;
+
+  // 梅花装饰
+  &::before {
+    content: '✿';
+    position: absolute;
+    top: 10rpx;
+    right: 10rpx;
+    font-size: 20rpx;
+    color: $ink-red;
+    opacity: 0.4;
+    z-index: 2;
+  }
 
   &:active {
     transform: scale(0.98);
@@ -1275,18 +1528,6 @@ $bg-card: #FFFFFF;
   height: 100%;
 }
 
-.hot-item__purchased-tag {
-  position: absolute;
-  top: 12rpx;
-  right: 12rpx;
-  padding: 6rpx 14rpx;
-  background: #10B981;
-  border-radius: 8rpx;
-  font-size: 20rpx;
-  font-weight: 600;
-  color: #fff;
-}
-
 .hot-item__info {
   padding: 20rpx;
 }
@@ -1294,12 +1535,13 @@ $bg-card: #FFFFFF;
 .hot-item__title {
   font-size: 28rpx;
   font-weight: 600;
-  color: $text-primary;
+  color: $vivid-red;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   margin-bottom: 8rpx;
+  letter-spacing: 1rpx;
 }
 
 .hot-item__category {
@@ -1317,7 +1559,7 @@ $bg-card: #FFFFFF;
 .hot-item__price {
   font-size: 32rpx;
   font-weight: 700;
-  color: $primary;
+  color: $accent-warm;
 }
 
 .hot-item__price--free {
@@ -1327,29 +1569,32 @@ $bg-card: #FFFFFF;
 
 .hot-item__btn {
   padding: 10rpx 24rpx;
-  background: $primary;
+  background: $bg-card;
+  border: 1px solid $primary;
   border-radius: 20rpx;
   font-size: 22rpx;
   font-weight: 600;
+  color: $primary;
 
   text {
-    color: #fff;
+    color: $primary;
   }
 
   &:active {
-    background: $primary-dark;
+    background: $mist-gradient;
   }
 }
 
 .hot-item__btn--view {
-  background: $secondary;
+  border-color: $secondary;
+  color: $secondary;
 
-  &:active {
-    background: darken($secondary, 10%);
+  text {
+    color: $secondary;
   }
 }
 
-/* ========== 骨架屏 ========== */
+/* ========== 骨架屏 - 水墨风格 ========== */
 .skeleton-list {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -1359,8 +1604,9 @@ $bg-card: #FFFFFF;
 
 .skeleton-card {
   background: rgba(255, 255, 255, 0.8);
-  border-radius: 20rpx;
+  border-radius: 16rpx;
   overflow: hidden;
+  @include ink-border;
 }
 
 .skeleton-cover {
@@ -1405,7 +1651,7 @@ $bg-card: #FFFFFF;
   animation: shimmer 1.5s infinite;
 }
 
-/* ========== 空状态 ========== */
+/* ========== 空状态 - 水墨风格 ========== */
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -1425,6 +1671,7 @@ $bg-card: #FFFFFF;
   font-weight: 600;
   color: $text-primary;
   margin-bottom: 12rpx;
+  letter-spacing: 2rpx;
 }
 
 .empty-desc {
@@ -1435,14 +1682,16 @@ $bg-card: #FFFFFF;
 .empty-action {
   margin-top: 32rpx;
   padding: 16rpx 40rpx;
-  background: $primary;
+  background: $bg-card;
+  border: 1px solid $primary;
   border-radius: 32rpx;
   font-size: 28rpx;
-  color: #fff;
+  color: $primary;
   font-weight: 600;
+  letter-spacing: 2rpx;
 
   &:active {
-    opacity: 0.8;
+    background: $mist-gradient;
   }
 }
 
@@ -1450,7 +1699,7 @@ $bg-card: #FFFFFF;
   height: 200rpx;
 }
 
-/* ========== 搜索弹窗 ========== */
+/* ========== 搜索弹窗 - 水墨风格 ========== */
 .search-popup {
   position: fixed;
   top: 0;
@@ -1463,14 +1712,14 @@ $bg-card: #FFFFFF;
 .search-popup__mask {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(139, 115, 85, 0.3);
 }
 
 .search-popup__content {
   position: fixed;
   left: 0;
   right: 0;
-  background: #fff;
+  background: $bg-card;
   animation: slideDownFade 0.3s ease-out;
   overflow: hidden;
   z-index: 200;
@@ -1480,7 +1729,10 @@ $bg-card: #FFFFFF;
   display: flex;
   align-items: center;
   padding: 20rpx 24rpx;
-  border-bottom: 1rpx solid #F1F5F9;
+  @include ink-border;
+  border-top: none;
+  border-left: none;
+  border-right: none;
 }
 
 .search-popup__input-wrap {
@@ -1488,7 +1740,8 @@ $bg-card: #FFFFFF;
   display: flex;
   align-items: center;
   height: 80rpx;
-  background: #F1F5F9;
+  background: $mist-gradient;
+  border: 1px solid rgba(139, 115, 85, 0.1);
   border-radius: 40rpx;
   padding: 0 16rpx 0 24rpx;
   gap: 12rpx;
@@ -1510,7 +1763,8 @@ $bg-card: #FFFFFF;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #E2E8F0;
+  background: $bg-card;
+  border: 1px solid rgba(139, 115, 85, 0.1);
   border-radius: 50%;
 }
 
@@ -1520,6 +1774,7 @@ $bg-card: #FFFFFF;
   color: $text-secondary;
   padding: 12rpx 0;
   white-space: nowrap;
+  letter-spacing: 1rpx;
 }
 
 .search-popup__body {
@@ -1542,13 +1797,15 @@ $bg-card: #FFFFFF;
   font-size: 28rpx;
   font-weight: 600;
   color: $text-primary;
+  letter-spacing: 2rpx;
 }
 
 .search-section__clear {
   font-size: 24rpx;
   color: $text-muted;
   padding: 6rpx 12rpx;
-  background: #F1F5F9;
+  background: $mist-gradient;
+  border: 1px solid rgba(139, 115, 85, 0.1);
   border-radius: 16rpx;
 }
 
@@ -1560,15 +1817,23 @@ $bg-card: #FFFFFF;
 
 .search-tag {
   padding: 12rpx 28rpx;
-  background: #F1F5F9;
+  background: $mist-gradient;
+  border: 1px solid rgba(139, 115, 85, 0.1);
   border-radius: 30rpx;
   font-size: 26rpx;
   color: $text-secondary;
+  letter-spacing: 1rpx;
+
+  &:active {
+    border-color: $primary;
+    color: $primary;
+  }
 }
 
 .search-tag--hot {
-  background: rgba(37, 99, 235, 0.08);
+  background: rgba(74, 111, 165, 0.05);
   color: $primary;
+  border-color: rgba(74, 111, 165, 0.15);
 }
 
 .hot-icon {
@@ -1583,7 +1848,7 @@ $bg-card: #FFFFFF;
   font-size: 24rpx;
   color: $text-muted;
   padding: 8rpx 0 16rpx;
-  border-bottom: 1rpx solid #F1F5F9;
+  border-bottom: 1px solid rgba(139, 115, 85, 0.1);
   margin-bottom: 8rpx;
 }
 
@@ -1591,14 +1856,18 @@ $bg-card: #FFFFFF;
   display: flex;
   align-items: center;
   padding: 20rpx 0;
-  border-bottom: 1rpx solid #F8FAFC;
+  border-bottom: 1px solid rgba(139, 115, 85, 0.05);
 
   &:last-child {
     border-bottom: none;
   }
 
   &:active {
-    background: #FAFAFA;
+    background: $mist-gradient;
+    margin: 0 -24rpx;
+    padding-left: 24rpx;
+    padding-right: 24rpx;
+    border-radius: 12rpx;
   }
 }
 
@@ -1611,7 +1880,7 @@ $bg-card: #FFFFFF;
 .suggestion-text {
   flex: 1;
   font-size: 28rpx;
-  color: $text-primary;
+  color: $vivid-red;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1639,4 +1908,196 @@ $bg-card: #FFFFFF;
 .icon-text--add { font-size: 32rpx; font-weight: 500; }
 .icon-text--close { font-size: 20rpx; }
 .icon-text--minus { font-size: 28rpx; font-weight: 500; }
+
+/* ========== 购买确认弹窗 ========== */
+.buy-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.buy-modal__content {
+  width: 600rpx;
+  background: $bg-card;
+  border-radius: 24rpx;
+  overflow: hidden;
+  animation: slideUp 0.3s ease;
+  box-shadow: 0 20rpx 60rpx rgba(0, 0, 0, 0.2);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(40rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.buy-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 32rpx;
+  border-bottom: 1px solid rgba(139, 115, 85, 0.1);
+}
+
+.buy-modal__title {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: $text-primary;
+  font-family: 'STKaiti', 'KaiTi', serif;
+}
+
+.buy-modal__close {
+  width: 56rpx;
+  height: 56rpx;
+  background: rgba(139, 115, 85, 0.08);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  color: $text-muted;
+
+  &:active {
+    background: rgba(139, 115, 85, 0.15);
+  }
+}
+
+.buy-modal__body {
+  padding: 32rpx;
+}
+
+.buy-modal__course {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 20rpx;
+  background: $mist-gradient;
+  border-radius: 16rpx;
+  margin-bottom: 24rpx;
+}
+
+.buy-modal__cover {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 12rpx;
+  flex-shrink: 0;
+}
+
+.buy-modal__info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.buy-modal__name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: $vivid-red;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.buy-modal__category {
+  font-size: 22rpx;
+  color: $text-muted;
+}
+
+.buy-modal__price-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx 0;
+  border-top: 1px dashed rgba(139, 115, 85, 0.1);
+  border-bottom: 1px dashed rgba(139, 115, 85, 0.1);
+  margin-bottom: 24rpx;
+}
+
+.buy-modal__price-label {
+  font-size: 28rpx;
+  color: $text-secondary;
+}
+
+.buy-modal__price {
+  font-size: 44rpx;
+  font-weight: 700;
+  color: $accent;
+  letter-spacing: 1rpx;
+}
+
+.buy-modal__notice {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 16rpx 20rpx;
+  background: rgba(74, 111, 165, 0.08);
+  border-radius: 12rpx;
+}
+
+.buy-modal__notice-icon {
+  font-size: 28rpx;
+}
+
+.buy-modal__notice-text {
+  font-size: 24rpx;
+  color: $primary;
+}
+
+.buy-modal__actions {
+  display: flex;
+  gap: 20rpx;
+  padding: 24rpx 32rpx 32rpx;
+}
+
+.buy-modal__btn {
+  flex: 1;
+  height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 44rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  transition: all 0.3s;
+
+  &--cancel {
+    background: $mist-gradient;
+    border: 1px solid rgba(139, 115, 85, 0.15);
+    color: $text-secondary;
+
+    &:active {
+      background: rgba(139, 115, 85, 0.1);
+      transform: scale(0.98);
+    }
+  }
+
+  &--confirm {
+    background: linear-gradient(135deg, $accent 0%, $accent-warm 100%);
+    color: #fff;
+    box-shadow: 0 8rpx 24rpx rgba(212, 145, 92, 0.35);
+
+    &:active {
+      transform: scale(0.98);
+      box-shadow: 0 4rpx 12rpx rgba(212, 145, 92, 0.25);
+    }
+  }
+}
 </style>

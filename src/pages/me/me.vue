@@ -31,22 +31,6 @@
       </view>
     </view>
 
-    <!-- 会员卡片 -->
-    <view class="member-card" v-if="isLoggedIn">
-      <view class="member-card__left">
-        <view class="member-card__icon">
-          <text>💰</text>
-        </view>
-        <view class="member-card__info">
-          <text class="member-card__title">账户余额</text>
-          <text class="member-card__value">¥{{ userInfo.balance || 0 }}</text>
-        </view>
-      </view>
-      <view class="member-card__btn" @tap="goBalance">
-        <text>充值</text>
-      </view>
-    </view>
-
     <!-- 功能菜单 -->
     <view class="menu-section">
       <view class="menu-card">
@@ -168,7 +152,6 @@ onShow(() => {
 const menuList = ref([
   { key: 'courses', name: '我的课程', icon: '📚' },
   { key: 'favorite', name: '我的收藏', icon: '❤️' },
-  { key: 'balance', name: '余额充值', icon: '💰' },
   { key: 'profile', name: '个人信息', icon: '👤' },
 ])
 
@@ -206,21 +189,11 @@ const onMenuTap = (menu) => {
     uni.navigateTo({ url: '/pages/external-course/list' })
   } else if (menu.key === 'favorite') {
     uni.navigateTo({ url: '/pages/favorite/favorite' })
-  } else if (menu.key === 'balance') {
-    uni.navigateTo({ url: '/pages/balance/balance' })
   } else if (menu.key === 'profile') {
     showProfileModal()
   } else {
     toast('功能开发中')
   }
-}
-
-const goBalance = () => {
-  if (!isLoggedIn.value) {
-    goLogin()
-    return
-  }
-  uni.navigateTo({ url: '/pages/balance/balance' })
 }
 
 const showProfileModal = () => {
@@ -278,17 +251,46 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
-// ========== 设计规范 ==========
-$primary: #2563EB;
-$primary-light: #3B82F6;
-$primary-dark: #1D4ED8;
-$secondary: #10B981;
-$accent: #F59E0B;
-$text-primary: #1E293B;
-$text-secondary: #64748B;
-$text-muted: #94A3B8;
-$bg-light: #F8FAFC;
-$bg-card: #FFFFFF;
+// ========== 新中式水墨风格设计规范 ==========
+// 色彩系统 - 融合传统水墨与现代简约
+$primary: #4A6FA5;           // 藏蓝色
+$primary-light: #6B8BB8;    // 浅藏蓝
+$secondary: #7BA05B;         // 松石绿
+$accent: #D4915C;            // 赭石色
+$accent-warm: #C4785C;       // 暖赭色
+$text-primary: #2C3E50;      // 墨色
+$text-secondary: #5D6D7E;    // 淡墨色
+$text-muted: #95A5A6;        // 浅墨色
+$bg-light: #FAF8F5;          // 宣纸白
+$bg-card: #FFFFFF;          // 卡片白
+$ink-red: #C94043;          // 梅花红
+$ink-brown: #8B7355;         // 棕褐色
+
+// 水墨渐变色
+$ink-gradient: linear-gradient(180deg, #E8E4DD 0%, #FAF8F5 100%);
+$mist-gradient: linear-gradient(180deg, rgba(139, 115, 85, 0.05) 0%, rgba(139, 115, 85, 0.02) 100%);
+
+@mixin ink-border {
+  border: 1px solid rgba(139, 115, 85, 0.15);
+  box-shadow: 0 4rpx 20rpx rgba(139, 115, 85, 0.08);
+}
+
+@mixin plum-blossom-decoration {
+  position: relative;
+  &::before {
+    content: '❀';
+    position: absolute;
+    top: -10rpx;
+    right: -10rpx;
+    font-size: 24rpx;
+    color: $ink-red;
+    opacity: 0.6;
+  }
+}
+
+@mixin ink-brush-stroke {
+  border-left: 4rpx solid $primary;
+}
 
 @keyframes slideUpFade {
   from { opacity: 0; transform: translateY(20rpx); }
@@ -301,7 +303,7 @@ $bg-card: #FFFFFF;
   position: relative;
 }
 
-/* ========== 用户信息头部 ========== */
+/* ========== 用户信息头部 - 水墨风格 ========== */
 .profile-header {
   position: relative;
   z-index: 1;
@@ -316,30 +318,58 @@ $bg-card: #FFFFFF;
   height: 100%;
   overflow: hidden;
   border-radius: 0 0 48rpx 48rpx;
-  background: linear-gradient(135deg, $primary 0%, $primary-light 50%, #60A5FA 100%);
+  background: $bg-card;
+  @include ink-border;
+  
+  // 水墨渐变效果
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: $mist-gradient;
+    opacity: 0.5;
+  }
+  
+  // 梅花装饰
+  &::after {
+    content: '✿ ❀ ✿';
+    position: absolute;
+    bottom: 20rpx;
+    right: 20rpx;
+    font-size: 28rpx;
+    color: $ink-red;
+    opacity: 0.2;
+    letter-spacing: 10rpx;
+  }
 }
 
 .profile-header__blob {
   position: absolute;
-  border-radius: 50%;
-  filter: blur(80rpx);
-  opacity: 0.3;
+  opacity: 0.1;
 }
 
+// 山水剪影装饰
 .profile-header__blob--1 {
   width: 300rpx;
   height: 300rpx;
-  background: #fff;
+  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><path fill="%234A6FA5" opacity="0.3" d="M100,20 L180,180 L20,180 Z"/></svg>') no-repeat center;
+  background-size: contain;
   top: -150rpx;
   right: -80rpx;
+  filter: blur(2px);
 }
 
 .profile-header__blob--2 {
   width: 200rpx;
   height: 200rpx;
-  background: #fff;
+  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="%238B7355" opacity="0.2" d="M50,10 L90,90 L10,90 Z"/></svg>') no-repeat center;
+  background-size: contain;
   bottom: -100rpx;
   left: -50rpx;
+  filter: blur(1px);
 }
 
 .profile-header__content {
@@ -362,12 +392,23 @@ $bg-card: #FFFFFF;
   width: 140rpx;
   height: 140rpx;
   border-radius: 50%;
-  background: #fff;
+  background: $bg-card;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 12rpx 40rpx rgba(0, 0, 0, 0.2);
+  @include ink-border;
   overflow: hidden;
+  
+  // 梅花边框
+  &::before {
+    content: '❀';
+    position: absolute;
+    top: -5rpx;
+    right: -5rpx;
+    font-size: 20rpx;
+    color: $ink-red;
+    opacity: 0.5;
+  }
 }
 
 .avatar-placeholder {
@@ -390,8 +431,9 @@ $bg-card: #FFFFFF;
 .user-name {
   font-size: 40rpx;
   font-weight: 700;
-  color: #fff;
-  letter-spacing: 2rpx;
+  color: $text-primary;
+  letter-spacing: 4rpx;
+  font-family: 'STKaiti', 'KaiTi', serif;
 }
 
 .user-badge {
@@ -399,13 +441,15 @@ $bg-card: #FFFFFF;
   align-items: center;
   gap: 6rpx;
   padding: 8rpx 18rpx;
-  background: linear-gradient(135deg, #FBBF24, #F59E0B);
+  background: $bg-card;
+  border: 1px solid rgba(139, 115, 85, 0.2);
   border-radius: 20rpx;
   width: fit-content;
+  @include ink-border;
 }
 
 .user-badge--member {
-  background: rgba(255, 255, 255, 0.25);
+  border-color: $secondary;
 }
 
 .badge-icon {
@@ -415,81 +459,13 @@ $bg-card: #FFFFFF;
 .badge-text {
   font-size: 22rpx;
   font-weight: 600;
-  color: #fff;
+  color: $text-primary;
 }
 
 .user-tip {
   font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.85);
-}
-
-/* ========== 会员卡片 ========== */
-.member-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin: -24rpx 24rpx 24rpx;
-  padding: 28rpx 32rpx;
-  background: $bg-card;
-  border-radius: 24rpx;
-  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.08);
-  position: relative;
-  z-index: 2;
-  animation: slideUpFade 0.4s ease-out;
-}
-
-.member-card__left {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-}
-
-.member-card__icon {
-  width: 72rpx;
-  height: 72rpx;
-  background: linear-gradient(135deg, $accent, #FBBF24);
-  border-radius: 20rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  text {
-    font-size: 36rpx;
-  }
-}
-
-.member-card__info {
-  display: flex;
-  flex-direction: column;
-  gap: 6rpx;
-}
-
-.member-card__title {
-  font-size: 26rpx;
   color: $text-muted;
-}
-
-.member-card__value {
-  font-size: 40rpx;
-  font-weight: 700;
-  color: $accent;
-}
-
-.member-card__btn {
-  padding: 16rpx 36rpx;
-  background: linear-gradient(135deg, $accent, #FBBF24);
-  border-radius: 30rpx;
-  box-shadow: 0 8rpx 24rpx rgba(245, 158, 11, 0.3);
-
-  text {
-    font-size: 28rpx;
-    font-weight: 600;
-    color: #fff;
-  }
-
-  &:active {
-    transform: scale(0.96);
-  }
+  letter-spacing: 1rpx;
 }
 
 /* ========== 功能菜单区域 ========== */
@@ -501,11 +477,22 @@ $bg-card: #FFFFFF;
 
 .menu-card {
   background: $bg-card;
-  border-radius: 24rpx;
+  border-radius: 20rpx;
   padding: 30rpx;
   margin-bottom: 24rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+  @include ink-border;
   animation: slideUpFade 0.4s ease-out;
+  
+  // 梅花装饰
+  &:nth-child(1)::before {
+    content: '❀';
+    position: absolute;
+    top: 10rpx;
+    right: 20rpx;
+    font-size: 32rpx;
+    color: $ink-red;
+    opacity: 0.1;
+  }
 }
 
 .menu-card__header {
@@ -516,9 +503,11 @@ $bg-card: #FFFFFF;
   font-size: 32rpx;
   font-weight: 700;
   color: $text-primary;
+  letter-spacing: 4rpx;
+  font-family: 'STKaiti', 'KaiTi', serif;
 }
 
-/* ========== 服务网格 ========== */
+/* ========== 服务网格 - 圆形图标 ========== */
 .service-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -540,33 +529,47 @@ $bg-card: #FFFFFF;
 .service-item__icon {
   width: 88rpx;
   height: 88rpx;
-  border-radius: 22rpx;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 6rpx 20rpx rgba(0, 0, 0, 0.08);
+  @include ink-border;
+  background: $bg-card;
+  position: relative;
+  
+  // 梅花装饰
+  &::before {
+    content: '❀';
+    position: absolute;
+    top: -5rpx;
+    right: -5rpx;
+    font-size: 14rpx;
+    color: $ink-red;
+    opacity: 0.4;
+  }
+
+  .icon-text {
+    font-size: 40rpx;
+  }
 }
 
 .service-icon--courses {
-  background: linear-gradient(135deg, $primary, $primary-light);
+  border-left: 4rpx solid $primary;
 }
 
 .service-icon--favorite {
-  background: linear-gradient(135deg, #EC4899, #F472B6);
-}
-
-.service-icon--balance {
-  background: linear-gradient(135deg, $accent, #FBBF24);
+  border-left: 4rpx solid $ink-red;
 }
 
 .service-icon--profile {
-  background: linear-gradient(135deg, $secondary, #34D399);
+  border-left: 4rpx solid $secondary;
 }
 
 .service-item__label {
   font-size: 24rpx;
   color: $text-secondary;
   text-align: center;
+  letter-spacing: 1rpx;
 }
 
 /* ========== 管理员入口 ========== */
@@ -585,12 +588,13 @@ $bg-card: #FFFFFF;
 .admin-entry__icon {
   width: 88rpx;
   height: 88rpx;
-  background: linear-gradient(135deg, $primary, $primary-light);
-  border-radius: 22rpx;
+  background: $bg-card;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 6rpx 20rpx rgba(37, 99, 235, 0.25);
+  @include ink-border;
+  @include plum-blossom-decoration;
 
   .icon-text {
     font-size: 42rpx;
@@ -607,6 +611,7 @@ $bg-card: #FFFFFF;
   font-size: 30rpx;
   font-weight: 600;
   color: $text-primary;
+  letter-spacing: 2rpx;
 }
 
 .admin-entry__desc {
@@ -620,24 +625,25 @@ $bg-card: #FFFFFF;
   font-weight: 300;
 }
 
-/* ========== 菜单列表 ========== */
+/* ========== 菜单列表 - 水墨风格 ========== */
 .menu-list__item {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 28rpx 0;
-  border-bottom: 1rpx solid #F1F5F9;
+  border-bottom: 1px solid rgba(139, 115, 85, 0.08);
 
   &:last-child {
     border-bottom: none;
   }
 
   &:active {
-    background: #FAFAFA;
+    background: $mist-gradient;
     margin: 0 -30rpx;
     padding-left: 30rpx;
     padding-right: 30rpx;
     border-radius: 12rpx;
+    border-bottom: none;
   }
 }
 
@@ -650,35 +656,38 @@ $bg-card: #FFFFFF;
 .menu-list__icon {
   width: 68rpx;
   height: 68rpx;
-  border-radius: 18rpx;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  @include ink-border;
+  background: $bg-card;
 }
 
 .menu-icon--about {
-  background: linear-gradient(135deg, #3B82F6, #60A5FA);
+  border-left: 3rpx solid $primary;
 }
 
 .menu-icon--contact {
-  background: linear-gradient(135deg, #8B5CF6, #A78BFA);
+  border-left: 3rpx solid #8B5CF6;
 }
 
 .menu-icon--help {
-  background: linear-gradient(135deg, $secondary, #34D399);
+  border-left: 3rpx solid $secondary;
 }
 
 .menu-icon--settings {
-  background: linear-gradient(135deg, #64748B, #94A3B8);
+  border-left: 3rpx solid $ink-brown;
 }
 
 .menu-icon--logout {
-  background: linear-gradient(135deg, #EF4444, #F87171);
+  border-left: 3rpx solid #EF4444;
 }
 
 .menu-list__text {
   font-size: 30rpx;
   color: $text-primary;
+  letter-spacing: 1rpx;
 }
 
 .menu-list__text--danger {
@@ -688,7 +697,7 @@ $bg-card: #FFFFFF;
 .menu-list__item--logout {
   margin-top: 16rpx;
   padding-top: 28rpx;
-  border-top: 1rpx solid #F1F5F9;
+  border-top: 1px solid rgba(139, 115, 85, 0.08);
 }
 
 /* ========== 图标文本 ========== */

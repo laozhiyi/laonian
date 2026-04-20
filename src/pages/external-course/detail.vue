@@ -27,7 +27,12 @@
     <!-- 课程信息 -->
     <view class="course-content">
       <view class="course-header">
-        <text class="course-title">{{ course.title }}</text>
+        <view class="title-row">
+          <text class="course-title">{{ course.title }}</text>
+          <view class="favorite-btn" @tap="toggleFavorite">
+            <text>{{ isFavorited ? '❤️' : '🤍' }}</text>
+          </view>
+        </view>
         <view class="price-row" v-if="course.price > 0">
           <text class="price-symbol">¥</text>
           <text class="price-value">{{ course.price }}</text>
@@ -84,9 +89,11 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { getExternalCourseDetail } from '@/utils/external-course.js'
-import { getCurrentUserId } from '@/utils/user.js'
+import { getCurrentUser } from '@/utils/user.js'
 import { checkCoursePurchased, purchaseCourse } from '@/utils/course.js'
+import { getFavorites, addFavorite, removeFavoriteByCourse } from '@/utils/favorite.js'
 
 const statusBarHeight = ref(0)
 const navHeight = ref(88)
@@ -94,6 +101,10 @@ const loading = ref(true)
 const course = ref({})
 const isPurchased = ref(false)
 const courseLink = ref('')
+
+// 收藏功能
+const isFavorited = ref(false)
+const favoriteId = ref(null)
 
 // 分类默认封面图（本地图片）
 const categoryCovers = {
@@ -170,6 +181,8 @@ const loadCourse = async () => {
       course.value = res.data
       // 检查是否已购买
       await checkPurchaseStatus()
+      // 加载收藏状态
+      await loadFavoriteStatus()
     }
   } catch (error) {
     console.error('加载课程失败:', error)
@@ -180,11 +193,11 @@ const loadCourse = async () => {
 
 // 检查购买状态
 const checkPurchaseStatus = async () => {
-  const userId = getCurrentUserId()
-  if (!userId) return
+  const user = getCurrentUser()
+  if (!user?.id) return
 
   try {
-    const res = await checkCoursePurchased(userId, course.value.id)
+    const res = await checkCoursePurchased(user.id, course.value.id)
     if (res.ok) {
       isPurchased.value = res.purchased
       courseLink.value = res.course_link || ''
@@ -194,10 +207,59 @@ const checkPurchaseStatus = async () => {
   }
 }
 
+// 加载收藏状态
+const loadFavoriteStatus = async () => {
+  const user = getCurrentUser()
+  if (!user?.id || !course.value.id) return
+
+  try {
+    const res = await getFavorites(user.id)
+    if (res.ok) {
+      const favorite = res.list.find(item =>
+        item.course_id === course.value.id && item.is_external === true
+      )
+      if (favorite) {
+        isFavorited.value = true
+        favoriteId.value = favorite.id
+      }
+    }
+  } catch (e) {
+    console.error('加载收藏状态失败:', e)
+  }
+}
+
+// 切换收藏状态
+const toggleFavorite = async () => {
+  const user = getCurrentUser()
+  if (!user?.id) {
+    uni.showToast({ title: '请先登录', icon: 'none' })
+    setTimeout(() => uni.navigateTo({ url: '/pages/auth/login' }), 1000)
+    return
+  }
+
+  if (isFavorited.value) {
+    // 取消收藏
+    const res = await removeFavoriteByCourse(user.id, course.value.id, true)
+    if (res.ok) {
+      isFavorited.value = false
+      favoriteId.value = null
+      uni.showToast({ title: '已取消收藏', icon: 'none' })
+    }
+  } else {
+    // 添加收藏
+    const res = await addFavorite(user.id, course.value.id, true)
+    if (res.ok) {
+      isFavorited.value = true
+      favoriteId.value = res.id
+      uni.showToast({ title: '已收藏', icon: 'success' })
+    }
+  }
+}
+
 // 处理购买
 const handleBuy = async () => {
-  const userId = getCurrentUserId()
-  if (!userId) {
+  const user = getCurrentUser()
+  if (!user?.id) {
     uni.showToast({ title: '请先登录', icon: 'none' })
     setTimeout(() => {
       uni.navigateTo({ url: '/pages/auth/login' })
@@ -218,7 +280,7 @@ const handleBuy = async () => {
       if (res.confirm) {
         uni.showLoading({ title: '购买中...' })
         try {
-          const result = await purchaseCourse(course.value.id, userId)
+          const result = await purchaseCourse(course.value.id, user.id)
           uni.hideLoading()
           if (result.ok) {
             uni.showToast({ title: '购买成功', icon: 'success' })
@@ -269,6 +331,13 @@ onMounted(() => {
   const sys = uni.getSystemInfoSync()
   statusBarHeight.value = sys.statusBarHeight || 0
   loadCourse()
+})
+
+// 每次进入页面时刷新收藏状态
+onShow(() => {
+  if (course.value.id) {
+    loadFavoriteStatus()
+  }
 })
 </script>
 
@@ -416,12 +485,37 @@ $bg-card: #FFFFFF;
 }
 
 .course-title {
+  flex: 1;
   font-size: 40rpx;
   font-weight: 700;
   color: $text-primary;
   line-height: 1.4;
   display: block;
+}
+
+.title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 20rpx;
+  gap: 16rpx;
+}
+
+.favorite-btn {
+  width: 64rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(37, 99, 235, 0.08);
+  border-radius: 50%;
+  font-size: 36rpx;
+  flex-shrink: 0;
+
+  &:active {
+    transform: scale(0.9);
+    background: rgba(37, 99, 235, 0.15);
+  }
 }
 
 .price-row {

@@ -166,6 +166,7 @@ export async function dbWhere(collection, condition, options = {}) {
     
     // 特殊路由映射（复数变单数）
     const routeMap = {
+      'cart': 'cart',
       'carts': 'cart',
       'favorites': 'favorites',
     }

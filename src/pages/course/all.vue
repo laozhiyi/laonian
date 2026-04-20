@@ -7,42 +7,57 @@
           <text class="back-arrow">‹</text>
         </view>
         <view class="nav-brand">
+          <view class="brand-icon">
+            <text class="icon-text">📚</text>
+          </view>
           <text class="brand-name">全部课程</text>
         </view>
         <view class="nav-search" @tap="showSearchPopup = true">
           <view class="search-icon">
             <text class="icon-text icon-text--search">🔍</text>
           </view>
+          <text class="search-text">搜索课程...</text>
         </view>
       </view>
     </view>
 
-    <!-- 分类标签和内容区域 -->
+    <!-- 分类图标网格和内容区域 -->
     <view class="content-wrapper" :style="{ paddingTop: (statusBarHeight + navHeight) + 'px' }">
-      <!-- 分类标签 -->
-      <view class="category-tabs">
-        <view
-          class="category-tab"
-          :class="{ 'category-tab--active': selectedCategory === '' }"
-          @tap="selectCategory('')"
-        >
-          <text>全部</text>
-        </view>
-        <view
-          class="category-tab"
-          :class="{ 'category-tab--active': selectedCategory === cat.name }"
-          v-for="cat in displayCategories"
-          :key="cat.id"
-          @tap="selectCategory(cat.name)"
-        >
-          <text>{{ cat.icon }} {{ cat.name }}</text>
-        </view>
-        <view
-          class="category-tab"
-          :class="{ 'category-tab--active': selectedCategory === '其他' }"
-          @tap="selectCategory('其他')"
-        >
-          <text>📂 其他</text>
+      <!-- 分类图标网格 -->
+      <view class="category-grid-wrapper">
+        <view class="category-grid">
+          <view
+            class="category-icon-item"
+            :class="{ 'category-icon-item--active': selectedCategory === '' }"
+            @tap="selectCategory('')"
+          >
+            <view class="category-icon-item__circle category-icon-item__circle--all-category">
+              <text class="category-icon-item__icon">🌐</text>
+            </view>
+            <text class="category-icon-item__name">全部</text>
+          </view>
+          <view
+            class="category-icon-item"
+            :class="{ 'category-icon-item--active': selectedCategory === cat.name }"
+            v-for="cat in displayCategories"
+            :key="cat.id"
+            @tap="selectCategory(cat.name)"
+          >
+            <view class="category-icon-item__circle" :style="{ background: 'linear-gradient(135deg, ' + cat.color + ' 0%, ' + adjustColor(cat.color, 20) + ' 100%)', borderColor: cat.color + '60' }">
+              <text class="category-icon-item__icon">{{ cat.icon }}</text>
+            </view>
+            <text class="category-icon-item__name">{{ cat.name }}</text>
+          </view>
+          <view
+            class="category-icon-item"
+            :class="{ 'category-icon-item--active': selectedCategory === '其他' }"
+            @tap="selectCategory('其他')"
+          >
+            <view class="category-icon-item__circle category-icon-item__circle--other">
+              <text class="category-icon-item__icon">📂</text>
+            </view>
+            <text class="category-icon-item__name">其他</text>
+          </view>
         </view>
       </view>
 
@@ -66,30 +81,31 @@
             class="course-card"
             v-for="course in filteredCourses"
             :key="course._isExternal ? 'ext-' + course.id : course.id"
-            @tap="goDetail(course)"
           >
-            <image class="course-card__cover" :src="course.cover || getCategoryCover(course.category)" mode="aspectFill" />
+            <view class="course-card__cover-wrap" @tap="goDetail(course)">
+              <image class="course-card__cover" :src="course.cover || getCategoryCover(course.category)" mode="aspectFill" />
+              <view class="course-card__badge" v-if="course._isExternal">外部</view>
+              <view class="course-card__purchased-tag" v-if="isCoursePurchased(course.id)">
+                <text>已购</text>
+              </view>
+            </view>
             <view class="course-card__content">
-              <view class="course-card__title">{{ course.title }}</view>
+              <view class="course-card__title" @tap="goDetail(course)">{{ course.title }}</view>
               <view class="course-card__meta">
                 <text class="meta-tag" v-if="course.category">{{ course.category }}</text>
                 <text class="meta-tag meta-tag--external" v-if="course._isExternal">外部课程</text>
-                <text class="meta-tag meta-tag--purchased" v-if="!course._isExternal && isCoursePurchased(course.id)">已购</text>
               </view>
               <view class="course-card__footer">
                 <view class="course-card__price" v-if="course.price > 0">
                   <text class="price-symbol">¥</text>
                   <text class="price-value">{{ Number(course.price).toFixed(0) }}</text>
                 </view>
-                <view class="course-card__price course-card__price--free" v-else>
-                  <text>免费</text>
-                </view>
-                <view class="course-card__action" :class="{ 'course-card__action--view': isCoursePurchased(course.id) }">
-                  <text>{{ isCoursePurchased(course.id) ? '查看' : '详情' }}</text>
+                <view class="course-card__price course-card__price--free" v-else>免费</view>
+                <view class="course-card__action" :class="{ 'course-card__action--view': isCoursePurchased(course.id) }" @tap="handleBuy(course)">
+                  <text>{{ isCoursePurchased(course.id) ? '查看' : (course.price > 0 ? '购买' : '查看') }}</text>
                 </view>
               </view>
             </view>
-            <view class="course-card__arrow">›</view>
           </view>
         </view>
 
@@ -202,6 +218,41 @@
         </scroll-view>
       </view>
     </view>
+
+    <!-- 购买确认弹窗 -->
+    <view class="buy-modal" v-if="showBuyModal" @tap="closeBuyConfirm">
+      <view class="buy-modal__content" @tap.stop>
+        <view class="buy-modal__header">
+          <text class="buy-modal__title">确认购买</text>
+          <text class="buy-modal__close" @tap="closeBuyConfirm">✕</text>
+        </view>
+        <view class="buy-modal__body" v-if="buyConfirmCourse">
+          <view class="buy-modal__course">
+            <image class="buy-modal__cover" :src="buyConfirmCourse.cover || getCategoryCover(buyConfirmCourse.category)" mode="aspectFill" />
+            <view class="buy-modal__info">
+              <text class="buy-modal__name">{{ buyConfirmCourse.title }}</text>
+              <text class="buy-modal__category">{{ buyConfirmCourse.category }}</text>
+            </view>
+          </view>
+          <view class="buy-modal__price-row">
+            <text class="buy-modal__price-label">支付金额</text>
+            <text class="buy-modal__price">¥{{ Number(buyConfirmCourse.price).toFixed(2) }}</text>
+          </view>
+          <view class="buy-modal__notice">
+            <text class="buy-modal__notice-icon">💡</text>
+            <text class="buy-modal__notice-text">购买后即可学习全部课程内容</text>
+          </view>
+        </view>
+        <view class="buy-modal__actions">
+          <view class="buy-modal__btn buy-modal__btn--cancel" @tap="closeBuyConfirm">
+            <text>取消</text>
+          </view>
+          <view class="buy-modal__btn buy-modal__btn--confirm" @tap="confirmBuy">
+            <text>确认购买</text>
+          </view>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -209,7 +260,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { getCourses } from '@/utils/course.js'
 import { getExternalCourses } from '@/utils/external-course.js'
+import { getFavorites, addFavorite, removeFavoriteByCourse } from '@/utils/favorite.js'
 import { getCurrentUser } from '@/utils/user.js'
+import request from '@/utils/request.js'
 
 // ========== 状态栏高度 ==========
 const statusBarHeight = ref(0)
@@ -217,6 +270,10 @@ const navHeight = ref(88)
 
 // ========== 已购买的课程ID集合 ==========
 const purchasedCourseIds = ref(new Set())
+
+// ========== 购买确认弹窗 ==========
+const showBuyModal = ref(false)
+const buyConfirmCourse = ref(null)
 
 // ========== 外部课程数据 ==========
 const externalCourses = ref([])
@@ -339,6 +396,16 @@ const categories = ref([
 
 // 6个主要分类
 const mainCategoryNames = ['公民素养', '时代前沿', '时事思政', '隔代教育', '哲学', '文学']
+
+// 调整颜色亮度
+const adjustColor = (color, percent) => {
+  const num = parseInt(color.replace('#', ''), 16)
+  const amt = Math.round(2.55 * percent)
+  const R = (num >> 16) + amt
+  const G = (num >> 8 & 0x00FF) + amt
+  const B = (num & 0x0000FF) + amt
+  return '#' + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 + (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 + (B < 255 ? B < 1 ? 0 : B : 255)).toString(16).slice(1)
+}
 
 // 显示的分类（只显示前6个）
 const displayCategories = computed(() => {
@@ -513,19 +580,10 @@ const checkPurchasedCourses = async () => {
   if (!userId) return
 
   try {
-    const { checkInternalCoursePurchased } = await import('@/utils/course.js')
-    const purchased = new Set()
-    for (const course of courseList.value) {
-      try {
-        const res = await checkInternalCoursePurchased(course.id)
-        if (res.ok && res.purchased) {
-          purchased.add(course.id)
-        }
-      } catch (e) {
-        console.error('检查购买状态失败:', e)
-      }
+    const res = await request.get('/api/course-orders/purchased-ids')
+    if (res.ok && res.purchased_ids) {
+      purchasedCourseIds.value = new Set(res.purchased_ids)
     }
-    purchasedCourseIds.value = purchased
   } catch (e) {
     console.error('检查已购买课程失败:', e)
   }
@@ -536,17 +594,154 @@ const isCoursePurchased = (courseId) => {
   return purchasedCourseIds.value.has(courseId)
 }
 
+// ========== 收藏功能 ==========
+const favoriteMap = ref({})
+
+const loadFavorites = async () => {
+  const user = getCurrentUser()
+  if (!user?.id) return
+
+  const res = await getFavorites(user.id)
+  if (res.ok) {
+    const map = {}
+    res.list.forEach(item => {
+      map[`${item.course_id}_${item.is_external}`] = item.id
+    })
+    favoriteMap.value = map
+  }
+}
+
+const isFavorited = (courseId, isExternal = false) => {
+  return !!favoriteMap.value[`${courseId}_${isExternal}`]
+}
+
+const toggleFavorite = async (course, isExternal = false) => {
+  const user = getCurrentUser()
+  if (!user?.id) {
+    uni.showToast({ title: '请先登录', icon: 'none' })
+    return
+  }
+
+  const key = `${course.id}_${isExternal}`
+  if (favoriteMap.value[key]) {
+    const res = await removeFavoriteByCourse(user.id, course.id, isExternal)
+    if (res.ok) {
+      delete favoriteMap.value[key]
+      favoriteMap.value = { ...favoriteMap.value }
+      uni.showToast({ title: '已取消收藏', icon: 'none' })
+    }
+  } else {
+    const res = await addFavorite(user.id, course.id, isExternal)
+    if (res.ok) {
+      favoriteMap.value[key] = res.id
+      favoriteMap.value = { ...favoriteMap.value }
+      uni.showToast({ title: '已收藏', icon: 'success' })
+    }
+  }
+}
+
+// ========== 交互方法 ==========
+// 处理购买/查看按钮点击
+const handleBuy = (course) => {
+  // 免费课程直接跳转
+  if (course.price <= 0) {
+    goDetail(course)
+    return
+  }
+
+  // 已购买课程直接跳转
+  if (isCoursePurchased(course.id)) {
+    goDetail(course)
+    return
+  }
+
+  // 未购买课程，显示购买确认弹窗
+  showBuyConfirm(course)
+}
+
+// 显示购买确认弹窗
+const showBuyConfirm = (course) => {
+  buyConfirmCourse.value = course
+  showBuyModal.value = true
+}
+
+// 关闭购买确认弹窗
+const closeBuyConfirm = () => {
+  showBuyModal.value = false
+  buyConfirmCourse.value = null
+}
+
+// 确认购买（调用后端API）
+const confirmBuy = async () => {
+  const course = buyConfirmCourse.value
+  if (!course) return
+
+  const userId = getCurrentUser()?.id
+  if (!userId) {
+    uni.showToast({ title: '请先登录', icon: 'none' })
+    setTimeout(() => uni.navigateTo({ url: '/pages/auth/login' }), 1000)
+    return
+  }
+
+  try {
+    uni.showLoading({ title: '购买中...' })
+
+    // 调用后端API
+    let res
+    if (course._isExternal) {
+      res = await request.post('/api/course-orders/simulate', { course_id: course.id })
+    } else {
+      res = await request.post('/api/course-orders/simulate-internal', { course_id: course.id })
+    }
+
+    uni.hideLoading()
+
+    if (res.ok) {
+      // 添加到已购买列表
+      purchasedCourseIds.value.add(course.id)
+      uni.showToast({ title: '购买成功', icon: 'success' })
+      // 关闭弹窗并跳转详情
+      closeBuyConfirm()
+      goDetail(course)
+    } else {
+      uni.showToast({ title: res.detail || '购买失败', icon: 'none' })
+    }
+  } catch (e) {
+    uni.hideLoading()
+    console.error('购买失败:', e)
+    uni.showToast({ title: '购买失败', icon: 'none' })
+  }
+}
+
+// 进入课程详情（检查购买状态）
+const goDetail = (course) => {
+  // 免费课程直接跳转
+  if (course.price <= 0) {
+    if (course._isExternal) {
+      uni.navigateTo({ url: `/pages/external-course/detail?id=${course.id}` })
+    } else {
+      uni.navigateTo({ url: `/pages/product/detail?id=${course.id}` })
+    }
+    return
+  }
+
+  // 已购买课程直接跳转
+  if (isCoursePurchased(course.id)) {
+    if (course._isExternal) {
+      uni.navigateTo({ url: `/pages/external-course/detail?id=${course.id}` })
+    } else {
+      uni.navigateTo({ url: `/pages/product/detail?id=${course.id}` })
+    }
+    return
+  }
+
+  // 未购买课程，显示购买确认
+  showBuyConfirm(course)
+}
+
 // ========== 交互方法 ==========
 const goBack = () => {
   uni.navigateBack()
-}
-
-const goDetail = (course) => {
-  if (course._isExternal) {
-    uni.navigateTo({ url: `/pages/external-course/detail?id=${course.id}` })
-    return
-  }
-  uni.navigateTo({ url: `/pages/product/detail?id=${course.id}` })
 }
 
 const onScrollToLower = () => {}
@@ -558,6 +753,8 @@ onMounted(() => {
   loadCourses()
   loadExternalCourses()
   loadSearchHistory()
+  loadFavorites()
+  checkPurchasedCourses()
 })
 </script>
 
@@ -651,16 +848,18 @@ $bg-card: #FFFFFF;
 }
 
 .nav-search {
-  width: 64rpx;
-  height: 64rpx;
-  background: #F1F5F9;
-  border-radius: 50%;
+  flex: 1;
+  height: 72rpx;
+  background: linear-gradient(135deg, rgba(74, 111, 165, 0.05), rgba(74, 111, 165, 0.02));
+  border: 1px solid rgba(74, 111, 165, 0.1);
+  border-radius: 36rpx;
   display: flex;
   align-items: center;
-  justify-content: center;
+  padding: 0 28rpx;
+  gap: 12rpx;
 
   &:active {
-    background: #E2E8F0;
+    border-color: #4A6FA5;
   }
 }
 
@@ -676,34 +875,86 @@ $bg-card: #FFFFFF;
   background: $bg-light;
 }
 
-/* ========== 分类标签 ========== */
-.category-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16rpx;
-  padding: 24rpx;
-  background: $bg-card;
-  animation: slideUpFade 0.4s ease-out;
+/* ========== 分类图标网格 - 圆形图标风格 ========== */
+.category-grid-wrapper {
+  background: #FFFFFF;
+  border: 1px solid rgba(139, 115, 85, 0.15);
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  margin: 24rpx;
+  border-radius: 16rpx;
+  box-shadow: 0 4rpx 20rpx rgba(139, 115, 85, 0.08);
 }
 
-.category-tab {
-  padding: 12rpx 24rpx;
-  background: #fff;
-  border: 1rpx solid #E2E8F0;
-  border-radius: 32rpx;
-  font-size: 26rpx;
-  color: #334155;
-  transition: all 0.3s;
+.category-grid {
+  display: flex;
+  flex-wrap: wrap;
+  padding: 16rpx;
+  gap: 8rpx 0;
+}
 
-  &:active {
-    transform: scale(0.95);
+.category-icon-item {
+  width: 25%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12rpx;
+  padding: 12rpx 0;
+
+  &__circle {
+    width: 96rpx;
+    height: 96rpx;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    border-width: 3rpx;
+    border-style: solid;
+
+    &--all-category {
+      background: linear-gradient(135deg, #4A90D9 0%, #6B8BB8 100%);
+      border-color: rgba(74, 144, 217, 0.4);
+    }
+
+    &--other {
+      background: linear-gradient(135deg, #8B7355 0%, #A08060 100%);
+      border-color: rgba(139, 115, 85, 0.4);
+    }
+  }
+
+  &__icon {
+    font-size: 44rpx;
+    filter: drop-shadow(0 2rpx 4rpx rgba(0,0,0,0.15));
+  }
+
+  &__name {
+    font-size: 22rpx;
+    color: #5D6D7E;
+    text-align: center;
+    max-width: 120rpx;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   &--active {
-    background: linear-gradient(135deg, $primary, $primary-light);
-    color: #fff;
-    border-color: transparent;
-    font-weight: 600;
+    .category-icon-item__circle {
+      transform: scale(1.1);
+      box-shadow: 0 6rpx 20rpx rgba(74, 111, 165, 0.25);
+    }
+
+    .category-icon-item__name {
+      color: #4A6FA5;
+      font-weight: 600;
+    }
+  }
+
+  &:active {
+    .category-icon-item__circle {
+      transform: scale(0.95);
+    }
   }
 }
 
@@ -786,6 +1037,40 @@ $bg-card: #FFFFFF;
   object-fit: cover;
 }
 
+.course-card__cover-wrap {
+  position: relative;
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 16rpx;
+  margin-right: 20rpx;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.course-card__badge {
+  position: absolute;
+  top: 8rpx;
+  left: 8rpx;
+  padding: 4rpx 10rpx;
+  background: $secondary;
+  border-radius: 8rpx;
+  font-size: 18rpx;
+  color: #fff;
+  font-weight: 600;
+}
+
+.course-card__purchased-tag {
+  position: absolute;
+  top: 8rpx;
+  right: 8rpx;
+  padding: 4rpx 10rpx;
+  background: rgba(245, 158, 11, 0.9);
+  border-radius: 8rpx;
+  font-size: 18rpx;
+  color: #fff;
+  font-weight: 600;
+}
+
 .course-card__content {
   flex: 1;
   min-width: 0;
@@ -851,9 +1136,9 @@ $bg-card: #FFFFFF;
   }
 
   &--free {
-    .price-symbol, .price-value {
-      color: $secondary;
-    }
+    font-size: 32rpx;
+    color: $secondary;
+    font-weight: 700;
   }
 }
 
@@ -1178,4 +1463,160 @@ $bg-card: #FFFFFF;
 
 .icon-text--search { font-size: 32rpx; }
 .icon-text--close { font-size: 20rpx; }
+
+/* ========== 购买确认弹窗 ========== */
+.buy-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.buy-modal__content {
+  width: 600rpx;
+  background: #FFFFFF;
+  border-radius: 24rpx;
+  overflow: hidden;
+}
+
+.buy-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 32rpx;
+  border-bottom: 1rpx solid rgba(139, 115, 85, 0.1);
+}
+
+.buy-modal__title {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #2C3E50;
+}
+
+.buy-modal__close {
+  width: 56rpx;
+  height: 56rpx;
+  background: rgba(139, 115, 85, 0.08);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  color: #95A5A6;
+}
+
+.buy-modal__body {
+  padding: 32rpx;
+}
+
+.buy-modal__course {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 20rpx;
+  background: linear-gradient(135deg, rgba(74, 111, 165, 0.05), rgba(74, 111, 165, 0.02));
+  border-radius: 16rpx;
+  margin-bottom: 24rpx;
+}
+
+.buy-modal__cover {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 12rpx;
+  flex-shrink: 0;
+}
+
+.buy-modal__info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.buy-modal__name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #2C3E50;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.buy-modal__category {
+  font-size: 22rpx;
+  color: #95A5A6;
+}
+
+.buy-modal__price-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx 0;
+  border-top: 1px dashed rgba(139, 115, 85, 0.1);
+  border-bottom: 1px dashed rgba(139, 115, 85, 0.1);
+  margin-bottom: 24rpx;
+}
+
+.buy-modal__price-label {
+  font-size: 28rpx;
+  color: #5D6D7E;
+}
+
+.buy-modal__price {
+  font-size: 44rpx;
+  font-weight: 700;
+  color: #D4915C;
+}
+
+.buy-modal__notice {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 16rpx 20rpx;
+  background: rgba(74, 111, 165, 0.08);
+  border-radius: 12rpx;
+}
+
+.buy-modal__notice-icon {
+  font-size: 28rpx;
+}
+
+.buy-modal__notice-text {
+  font-size: 24rpx;
+  color: #4A6FA5;
+}
+
+.buy-modal__actions {
+  display: flex;
+  gap: 20rpx;
+  padding: 24rpx 32rpx 32rpx;
+}
+
+.buy-modal__btn {
+  flex: 1;
+  height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 44rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+
+  &--cancel {
+    background: linear-gradient(135deg, rgba(74, 111, 165, 0.05), rgba(74, 111, 165, 0.02));
+    border: 1px solid rgba(139, 115, 85, 0.15);
+    color: #5D6D7E;
+  }
+
+  &--confirm {
+    background: linear-gradient(135deg, #D4915C 0%, #C4785C 100%);
+    color: #fff;
+    box-shadow: 0 8rpx 24rpx rgba(212, 145, 92, 0.35);
+  }
+}
 </style>
